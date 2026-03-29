@@ -203,6 +203,18 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .inst-table td{padding:11px 16px;border-bottom:1px solid var(--border)}
 .inst-table tr:last-child td{border-bottom:none}
 .inst-table tr:hover td{background:var(--surface2)}
+/* INSTALLMENT GROUP CARDS */
+.inst-group{border-bottom:1px solid var(--border);padding:14px 18px;transition:background .15s}
+.inst-group:last-child{border-bottom:none}
+.inst-group:hover{background:var(--surface2)}
+.inst-group-hdr{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.inst-group-title{font-size:13.5px;font-weight:600;flex:1}
+.inst-group-meta{font-size:11px;color:var(--text3);margin-top:2px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.inst-progress{height:5px;background:var(--surface3);border-radius:3px;overflow:hidden;margin-top:8px}
+.inst-progress-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.inst-month-item{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border)}
+.inst-month-item:last-child{border-bottom:none}
+.inst-month-item:hover{background:var(--surface2)}
 /* CHECKBOX / BULK SELECT */
 .tx-item-wrap{position:relative}
 .tx-chk{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
@@ -439,17 +451,35 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <!-- INSTALLMENTS -->
     <div class="page" id="page-installments">
       <div class="page-hdr">
-        <div><div class="page-title">Parcelamentos</div><div class="page-sub">Compras parceladas ativas e futuras</div></div>
-        <button class="btn btn-primary" onclick="openTxModal()">+ Nova Parcela</button>
+        <div><div class="page-title">Parcelamentos</div><div class="page-sub" id="instSub">Parcelas do mês atual</div></div>
+        <button class="btn btn-primary" onclick="openTxModal()">+ Nova Compra Parcelada</button>
       </div>
+
+      <!-- SUMMARY CARDS -->
       <div class="cg3">
-        <div class="card c-purple"><div class="card-ico">🔄</div><div class="card-lbl">Total em Aberto</div><div class="card-val" id="instSum" style="color:var(--accent5)">R$ 0</div><div class="card-sub2" id="instSumCt">—</div></div>
-        <div class="card c-teal"><div class="card-ico">📅</div><div class="card-lbl">Este Mês</div><div class="card-val pos" id="instMonth">R$ 0</div><div class="card-sub2" id="instMonthCt">vencendo agora</div></div>
-        <div class="card c-blue"><div class="card-ico">⏳</div><div class="card-lbl">Maior Parcelamento</div><div class="card-val" id="instMax" style="color:var(--accent4)">—</div><div class="card-sub2">parcelas restantes</div></div>
+        <div class="card c-teal"><div class="card-ico">📅</div><div class="card-lbl">Total Este Mês</div><div class="card-val pos" id="instMonth">R$ 0</div><div class="card-sub2" id="instMonthCt">0 parcelas vencendo</div></div>
+        <div class="card c-purple"><div class="card-ico">🔄</div><div class="card-lbl">Parcelas Restantes</div><div class="card-val" id="instSum" style="color:var(--accent5)">R$ 0</div><div class="card-sub2" id="instSumCt">total ainda a pagar</div></div>
+        <div class="card c-blue"><div class="card-ico">🛒</div><div class="card-lbl">Compras Ativas</div><div class="card-val" id="instGroups" style="color:var(--accent4)">0</div><div class="card-sub2">compras parceladas</div></div>
       </div>
+
+      <!-- THIS MONTH SECTION -->
+      <div class="sec-card" style="margin-bottom:16px">
+        <div class="sec-hdr">
+          <div>
+            <div class="sec-title" id="instMonthTitle">Parcelas de Mar 2026</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">Compras parceladas com competência neste mês</div>
+          </div>
+        </div>
+        <div id="instMonthList"></div>
+      </div>
+
+      <!-- ALL PURCHASES SECTION -->
       <div class="sec-card">
-        <div class="sec-hdr"><div class="sec-title">Compras Parceladas</div><div class="tabs"><button class="tab active" onclick="setInstTab('active',this)">Ativas</button><button class="tab" onclick="setInstTab('all',this)">Todas</button></div></div>
-        <div class="inst-wrap"><table class="inst-table"><thead><tr><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Pagamento</th><th>Parcela</th><th>Valor/Parcela</th><th>Situação</th><th></th></tr></thead><tbody id="instBody"></tbody></table></div>
+        <div class="sec-hdr">
+          <div><div class="sec-title">Todas as Compras Parceladas</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Histórico completo agrupado por compra</div></div>
+          <div class="tabs"><button class="tab active" onclick="setInstTab('active',this)">Em andamento</button><button class="tab" onclick="setInstTab('all',this)">Todas</button></div>
+        </div>
+        <div id="instGroupList" style="padding:0"></div>
       </div>
     </div>
     <!-- BUDGET -->
@@ -898,7 +928,7 @@ function setupUI(){
   $('uAv').textContent=name.charAt(0).toUpperCase();
   $('uName').textContent=name; $('uEmail').textContent=curUser.email;
   updateMonthLabel();
-  const years=[...new Set(userData.transactions.map(t=>new Date(t.date+'T00:00:00').getFullYear()).concat([curYear]))].sort();
+  const years=[...new Set(userData.transactions.map(t=>getTxComp(t).year).concat([curYear]))].sort();
   $('cfYear').innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); $('cfYear').value=curYear;
   if(userData.reserve>0) $('cfReserve').value=userData.reserve;
   if(userData.patrimonio>0) $('cfPatrimonio').value=userData.patrimonio;
@@ -1055,16 +1085,22 @@ function txItem(t){
 }
 
 // ===== AVERAGE HELPERS =====
+// Central helper: get competency month/year for a transaction
+function getTxComp(t){
+  const comp=t.competency||t.date.substr(0,7);
+  const[cy,cm]=comp.split('-').map(Number);
+  return{year:cy, month:cm-1}; // month is 0-indexed
+}
+
 // Returns average monthly value for a filter — all months with ANY data in the year
 function calcAnnualAvg(filterFn){
   const withData=[];
   for(let m=0;m<12;m++){
-    // skip future months (keep current month if it has data)
     const now=new Date();
     if(curYear===now.getFullYear() && m>now.getMonth()) continue;
     const val=userData.transactions.filter(t=>{
-      const dt=new Date(t.date+'T00:00:00');
-      return dt.getMonth()===m && dt.getFullYear()===curYear && filterFn(t);
+      const c=getTxComp(t);
+      return c.month===m && c.year===curYear && filterFn(t);
     }).reduce((s,t)=>s+t.value,0);
     if(val>0) withData.push(val);
   }
@@ -1075,7 +1111,7 @@ function calcAnnualAvg(filterFn){
 function catMonthlyHistory(cat){
   const map={};
   userData.transactions.filter(t=>t.category===cat&&t.type==='expense').forEach(t=>{
-    const k=t.date.substr(0,7);
+    const k=t.competency||t.date.substr(0,7); // use competency
     map[k]=(map[k]||0)+t.value;
   });
   return Object.values(map); // one value per month that has data
@@ -1349,17 +1385,146 @@ function renderTxPage(){
 
 // INSTALLMENTS
 window.setInstTab=function(t,btn){ instTabState=t; document.querySelectorAll('#page-installments .tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderInstallments(); };
+
 function renderInstallments(){
-  const now=new Date();
-  let insts=userData.transactions.filter(t=>t.installment);
-  if(instTabState==='active') insts=insts.filter(t=>new Date(t.date+'T00:00:00')>=new Date(now.getFullYear(),now.getMonth(),1));
-  insts.sort((a,b)=>a.date.localeCompare(b.date));
-  const thisM=userData.transactions.filter(t=>{ if(!t.installment)return false; const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===curMonth&&dt.getFullYear()===curYear; });
-  let maxRem=0; insts.forEach(t=>{ const r=(t.installTotal||1)-(t.installCurrent||1)+1; if(r>maxRem)maxRem=r; });
-  $('instSum').textContent=fmtBRL(insts.reduce((s,t)=>s+t.value,0)); $('instSumCt').textContent=`${insts.length} parcelas`;
-  $('instMonth').textContent=fmtBRL(thisM.reduce((s,t)=>s+t.value,0)); $('instMonthCt').textContent=`${thisM.length} parcelas este mês`;
-  $('instMax').textContent=maxRem>0?`${maxRem}x`:'—';
-  $('instBody').innerHTML=insts.length?insts.map(t=>{ const rem=(t.installTotal||1)-(t.installCurrent||1); const now2=new Date(t.date+'T00:00:00').getMonth()===curMonth&&new Date(t.date+'T00:00:00').getFullYear()===curYear; return `<tr style="${now2?'background:rgba(94,234,212,.04)':''}"><td><strong>${t.desc}</strong><br><span style="font-size:10.5px;color:var(--text3)">${fmtDate(t.date)}</span></td><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:${catColor(t.category)};display:inline-block"></span>${t.category||'—'}</span></td><td>${t.expenseType==='fixed'?'<span class="badge b-info">Fixo</span>':'<span class="badge b-orange">Variável</span>'}</td><td>${PAY_LABEL[t.payment]||'—'}</td><td><span class="badge b-purple">${t.installCurrent||'?'}/${t.installTotal||'?'}</span></td><td style="font-weight:600;color:var(--red)">${fmtBRL(t.value)}</td><td>${rem>0?`<span class="badge b-warn">${rem} restantes</span>`:'<span class="badge b-ok">Última</span>'}</td><td><button class="btn-icon" onclick="deleteTx('${t.id}')">🗑️</button></td></tr>`; }).join(''):`<tr><td colspan="8" style="text-align:center;padding:36px;color:var(--text3)">Nenhum parcelamento encontrado.</td></tr>`;
+  const allInst=userData.transactions.filter(t=>t.installment);
+
+  // Group by groupId (or by desc+total as fallback)
+  const groups={};
+  allInst.forEach(t=>{
+    const key=t.groupId||(t.desc.replace(/ \d+\/\d+$/,'')+'-'+t.installTotal);
+    if(!groups[key]) groups[key]={
+      key, desc:t.desc.replace(/ \d+\/\d+$/,''),
+      category:t.category, expenseType:t.expenseType,
+      payment:t.payment, valuePerInst:t.value,
+      total:t.installTotal||1, parcelas:[]
+    };
+    groups[key].parcelas.push(t);
+  });
+
+  // Sort parcelas within each group
+  Object.values(groups).forEach(g=>{
+    g.parcelas.sort((a,b)=>(a.installCurrent||0)-(b.installCurrent||0));
+    g.firstDate=g.parcelas[0]?.date||'';
+    g.purchased=g.parcelas[0]?.date||''; // date of purchase (first parcela)
+    g.completed=g.parcelas.filter(p=>p.status==='paid').length;
+    g.remaining=g.total-g.completed;
+    g.remainingValue=g.remaining*g.valuePerInst;
+    g.totalValue=g.total*g.valuePerInst;
+  });
+
+  // This month's installments (by competency)
+  const thisMonthInst=allInst.filter(t=>{
+    const comp=t.competency||t.date.substr(0,7);
+    const[cy,cm]=comp.split('-').map(Number);
+    return cm-1===curMonth && cy===curYear;
+  });
+  const thisMonthTotal=thisMonthInst.reduce((s,t)=>s+t.value,0);
+
+  // All remaining (future + unpaid)
+  const allRemaining=allInst.filter(t=>{
+    const comp=t.competency||t.date.substr(0,7);
+    const[cy,cm]=comp.split('-').map(Number);
+    const mIdx=cy*12+(cm-1);
+    const curIdx=curYear*12+curMonth;
+    return mIdx>=curIdx && t.status!=='paid';
+  });
+  const allRemainingTotal=allRemaining.reduce((s,t)=>s+t.value,0);
+
+  const activeGroups=Object.values(groups).filter(g=>g.remaining>0);
+
+  // UPDATE CARDS
+  $('instMonth').textContent=fmtBRL(thisMonthTotal);
+  $('instMonthCt').textContent=`${thisMonthInst.length} parcela${thisMonthInst.length!==1?'s':''} este mês`;
+  $('instSum').textContent=fmtBRL(allRemainingTotal);
+  $('instSumCt').textContent=`${allRemaining.length} parcelas restantes`;
+  $('instGroups').textContent=activeGroups.length;
+  $('instMonthTitle').textContent=`Parcelas de ${MONTHS_S[curMonth]} ${curYear}`;
+  $('instSub').textContent=`Navegue pelos meses para ver as parcelas de cada período`;
+
+  // THIS MONTH LIST
+  if(!thisMonthInst.length){
+    $('instMonthList').innerHTML=`<div class="empty-st"><div class="empty-ico">📅</div><div class="empty-txt">Nenhuma parcela com competência em ${MONTHS[curMonth]} ${curYear}.</div></div>`;
+  } else {
+    $('instMonthList').innerHTML=thisMonthInst.map(t=>{
+      const purchaseDate=t.date;
+      const comp=t.competency||t.date.substr(0,7);
+      const diffComp=comp!==t.date.substr(0,7);
+      const stBadge=t.status==='paid'?'<span class="badge b-ok">Pago</span>':'<span class="badge b-warn">Pendente</span>';
+      return `<div class="inst-month-item">
+        <div style="width:8px;height:8px;border-radius:50%;background:${catColor(t.category)};flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${t.desc}</div>
+          <div style="font-size:10.5px;color:var(--text3);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">
+            <span>🛒 Compra: ${fmtDate(purchaseDate)}</span>
+            ${diffComp?`<span style="color:var(--yellow)">📋 Comp: ${comp}</span>`:''}
+            <span>${catIcon(t.category)} ${t.category}</span>
+            <span>${PAY_LABEL[t.payment]||'—'}</span>
+            <span class="badge b-purple">${t.installCurrent||'?'}/${t.installTotal||'?'}</span>
+            ${stBadge}
+          </div>
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--red);white-space:nowrap">${fmtBRL(t.value)}</div>
+        <button class="btn-icon" onclick="openTxModal('${t.id}')">✏️</button>
+        <button class="btn-icon" onclick="deleteTx('${t.id}')">🗑️</button>
+      </div>`;
+    }).join('');
+  }
+
+  // GROUPED LIST
+  let groupsToShow=Object.values(groups);
+  if(instTabState==='active') groupsToShow=groupsToShow.filter(g=>g.remaining>0);
+  groupsToShow.sort((a,b)=>b.firstDate.localeCompare(a.firstDate));
+
+  if(!groupsToShow.length){
+    $('instGroupList').innerHTML=`<div class="empty-st"><div class="empty-ico">🛒</div><div class="empty-txt">Nenhuma compra parcelada encontrada.</div></div>`;
+    return;
+  }
+
+  $('instGroupList').innerHTML=groupsToShow.map(g=>{
+    const pct=g.total>0?Math.round((g.completed/g.total)*100):0;
+    const barColor=pct===100?'var(--accent)':pct>60?'var(--accent4)':'var(--accent3)';
+    const firstComp=g.parcelas[0]?.competency||g.parcelas[0]?.date?.substr(0,7)||'—';
+    const lastComp=g.parcelas[g.parcelas.length-1]?.competency||g.parcelas[g.parcelas.length-1]?.date?.substr(0,7)||'—';
+
+    // Find this month's parcela for this group
+    const thisMonthParcela=g.parcelas.find(p=>{
+      const comp=p.competency||p.date.substr(0,7);
+      const[cy,cm]=comp.split('-').map(Number);
+      return cm-1===curMonth&&cy===curYear;
+    });
+
+    return `<div class="inst-group">
+      <div class="inst-group-hdr">
+        <div style="width:10px;height:10px;border-radius:50%;background:${catColor(g.category)};flex-shrink:0"></div>
+        <div style="flex:1">
+          <div class="inst-group-title">${g.desc}</div>
+          <div class="inst-group-meta">
+            <span>${catIcon(g.category)} ${g.category}</span>
+            <span>${PAY_LABEL[g.payment]||'—'}</span>
+            <span>${g.expenseType==='fixed'?'<span class="badge b-info">Fixo</span>':'<span class="badge b-orange">Variável</span>'}</span>
+            <span style="color:var(--text3)">🛒 Compra: ${fmtDate(g.purchased)}</span>
+            <span style="color:var(--text3)">📋 ${firstComp} → ${lastComp}</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--red)">${fmtBRL(g.valuePerInst)}<span style="font-size:10px;color:var(--text3)">/parcela</span></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">Total: ${fmtBRL(g.totalValue)}</div>
+        </div>
+        ${thisMonthParcela?`<div style="background:rgba(94,234,212,.1);border:1px solid rgba(94,234,212,.25);border-radius:8px;padding:5px 10px;text-align:center;flex-shrink:0"><div style="font-size:9px;color:var(--accent);letter-spacing:.5px">ESTE MÊS</div><div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--accent)">${thisMonthParcela.installCurrent}/${thisMonthParcela.installTotal}</div></div>`:''}
+      </div>
+      <!-- PROGRESS BAR -->
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1">
+          <div class="inst-progress"><div class="inst-progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
+        </div>
+        <div style="font-size:10.5px;color:var(--text3);white-space:nowrap">
+          ${g.completed}/${g.total} pagas
+          ${g.remaining>0?`· <span style="color:var(--yellow)">${g.remaining} restante${g.remaining!==1?'s':''}</span> · ${fmtBRL(g.remainingValue)} ainda a pagar`:'· <span style="color:var(--accent)">✓ Quitado</span>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // BUDGET
@@ -1375,24 +1540,24 @@ window.updateBudgetAvg=function(){
   const cat=$('budCat').value;
   if(!cat){ $('budAvgInfo').style.display='none'; return; }
 
-  // Calculate averages for this category — last 3 and 6 months, max
+  // Calculate averages for this category — last 3 and 6 months, max — using competency
   function catAvg(n){
     const vals=[];
     for(let i=1;i<=n;i++){
       let m=curMonth-i, y=curYear;
       if(m<0){m+=12;y--;}
       const val=userData.transactions.filter(t=>{
-        const dt=new Date(t.date+'T00:00:00');
-        return dt.getMonth()===m&&dt.getFullYear()===y&&t.category===cat&&t.type==='expense';
+        const c=getTxComp(t);
+        return c.month===m&&c.year===y&&t.category===cat&&t.type==='expense';
       }).reduce((s,t)=>s+t.value,0);
       if(val>0) vals.push(val);
     }
     return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:0;
   }
-  // simpler max calculation
+  // max by competency month
   const monthlyMap={};
   userData.transactions.filter(t=>t.category===cat&&t.type==='expense').forEach(t=>{
-    const k=t.date.substr(0,7);
+    const k=t.competency||t.date.substr(0,7);
     monthlyMap[k]=(monthlyMap[k]||0)+t.value;
   });
   const monthlyVals=Object.values(monthlyMap);
@@ -1429,7 +1594,7 @@ window.updateBudgetLimitHint=function(){
 
   const monthlyMap={};
   userData.transactions.filter(t=>t.category===cat&&t.type==='expense').forEach(t=>{
-    const k=t.date.substr(0,7);
+    const k=t.competency||t.date.substr(0,7);
     monthlyMap[k]=(monthlyMap[k]||0)+t.value;
   });
   const vals=Object.values(monthlyMap);
@@ -1553,7 +1718,7 @@ function renderCashflow(){
 
   // Calculate monthly data
   const monthly=MONTHS_S.map((_,m)=>{
-    const txs=userData.transactions.filter(t=>{ const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===m&&dt.getFullYear()===year; });
+    const txs=userData.transactions.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
     const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
     const fi=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
     const va=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
@@ -1715,7 +1880,7 @@ async function renderSharedPage(){
   const status=await loadSharedStatus();
 
   // Setup year selector
-  const years=[...new Set(userData.transactions.map(t=>new Date(t.date+'T00:00:00').getFullYear()).concat([curYear]))].sort();
+  const years=[...new Set(userData.transactions.map(t=>getTxComp(t).year).concat([curYear]))].sort();
   const ySel=$('sharedYear');
   if(!ySel.options.length){ ySel.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); ySel.value=curYear; }
 
@@ -1870,7 +2035,7 @@ async function renderShared(status){
 
   function calcYear(txs,patrimIni,reserve){
     const monthly=MONTHS_S.map((_,m)=>{
-      const mt=txs.filter(t=>{ const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===m&&dt.getFullYear()===year; });
+      const mt=txs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
       const inc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
       const fi=mt.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
       const va=mt.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
@@ -1954,18 +2119,21 @@ window.setPixFilter=function(f,btn){
 };
 function renderPixPage(){
   const search=($('pixSearch')?.value||'').toLowerCase();
-  const allTxs=userData.transactions.filter(t=>t.payment==='pix');
-  const sent=allTxs.filter(t=>t.type==='expense');
-  const received=allTxs.filter(t=>t.type==='income');
-  const sentAmt=sent.reduce((s,t)=>s+t.value,0);
-  const recvAmt=received.reduce((s,t)=>s+t.value,0);
+  // Card totals = current competency month
+  const monthTxs=getMonthTx().filter(t=>t.payment==='pix');
+  const monthSent=monthTxs.filter(t=>t.type==='expense');
+  const monthRecv=monthTxs.filter(t=>t.type==='income');
+  const sentAmt=monthSent.reduce((s,t)=>s+t.value,0);
+  const recvAmt=monthRecv.reduce((s,t)=>s+t.value,0);
   $('pixOut').textContent=fmtBRL(sentAmt);
   $('pixIn').textContent=fmtBRL(recvAmt);
   const bal=recvAmt-sentAmt;
   const balEl=$('pixBal'); balEl.textContent=fmtBRL(Math.abs(bal));
   balEl.className='card-val '+(bal>=0?'pos':'neg');
-  $('pixOutCt').textContent=`${sent.length} transações`;
-  $('pixInCt').textContent=`${received.length} transações`;
+  $('pixOutCt').textContent=`${monthSent.length} transações`;
+  $('pixInCt').textContent=`${monthRecv.length} transações`;
+  // List = all pix (not filtered by month), sorted by date
+  const allTxs=userData.transactions.filter(t=>t.payment==='pix');
   let txs=[...allTxs].sort((a,b)=>b.date.localeCompare(a.date));
   if(pixFilter==='out') txs=txs.filter(t=>t.type==='expense');
   if(pixFilter==='in') txs=txs.filter(t=>t.type==='income');
