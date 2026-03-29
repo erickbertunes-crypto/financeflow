@@ -884,36 +884,129 @@ function renderBudget(){
 }
 
 // CASHFLOW
+let patriChartI=null;
 window.saveReserve=async function(){
   const v=parseFloat($('cfReserve').value)||0;
   userData.reserve=v; await saveSettings(); renderCashflow();
 };
+window.savePatrimonio=async function(){
+  const v=parseFloat($('cfPatrimonio').value)||0;
+  userData.patrimonio=v; await saveSettings(); renderCashflow();
+};
 function renderCashflow(){
   const year=parseInt($('cfYear').value)||curYear;
   const reserve=parseFloat($('cfReserve')?.value)||userData.reserve||0;
-  const monthly=MONTHS_S.map((_,m)=>{ const txs=userData.transactions.filter(t=>{ const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===m&&dt.getFullYear()===year; }); const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0); const fi=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0); const va=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0); const tot=fi+va; const bal=inc-tot; const balAfterReserve=bal-reserve; return{inc,fi,va,tot,bal,reserve,balAfterReserve}; });
-  const tot=monthly.reduce((a,m)=>({inc:a.inc+m.inc,fi:a.fi+m.fi,va:a.va+m.va,tot:a.tot+m.tot,bal:a.bal+m.bal,reserve:a.reserve+m.reserve,balAfterReserve:a.balAfterReserve+m.balAfterReserve}),{inc:0,fi:0,va:0,tot:0,bal:0,reserve:0,balAfterReserve:0});
+  const patrimonioInicial=parseFloat($('cfPatrimonio')?.value)||userData.patrimonio||0;
 
-  const row=(lbl,vals,bold,colored)=>{
-    const cls=bold?'subtotal':'';
-    return `<tr${cls?' class="'+cls+'"':''}><td style="${bold?'font-weight:700':''}">${lbl}</td>${vals.map(v=>{
-      const c=colored==='auto'?(v<0?'neg':v>0?'pos':''):(colored||'');
-      return `<td class="${c}" style="text-align:right">${v===0?'—':fmtBRL(Math.abs(v))}</td>`;
-    }).join('')}</tr>`;
+  // Calculate monthly data
+  const monthly=MONTHS_S.map((_,m)=>{
+    const txs=userData.transactions.filter(t=>{ const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===m&&dt.getFullYear()===year; });
+    const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+    const fi=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
+    const va=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
+    const tot=fi+va; const bal=inc-tot;
+    const balAfterReserve=reserve>0?bal-reserve:bal;
+    return{inc,fi,va,tot,bal,reserve,balAfterReserve};
+  });
+
+  // Accumulate patrimônio: starts with patrimonioInicial, each month adds balAfterReserve
+  // But only add for months that have data (inc or exp > 0)
+  let running=patrimonioInicial;
+  const patrimonioMensal=monthly.map(m=>{
+    const hasData=m.inc>0||m.tot>0;
+    if(hasData){ running+=m.balAfterReserve; return running; }
+    return running; // carry forward without changing if no data
+  });
+
+  const tot=monthly.reduce((a,m)=>({
+    inc:a.inc+m.inc,fi:a.fi+m.fi,va:a.va+m.va,
+    tot:a.tot+m.tot,bal:a.bal+m.bal,
+    reserve:a.reserve+m.reserve,balAfterReserve:a.balAfterReserve+m.balAfterReserve
+  }),{inc:0,fi:0,va:0,tot:0,bal:0,reserve:0,balAfterReserve:0});
+
+  const finalPatrimonio=patrimonioMensal[11]; // December or last month
+
+  // Row builder
+  const row=(lbl,vals,bold,colored,rowCls)=>{
+    return `<tr${rowCls?' class="'+rowCls+'"':bold?' class="subtotal"':''}>
+      <td style="${bold||rowCls?'font-weight:700':''}">${lbl}</td>
+      ${vals.map(v=>{
+        const c=colored==='auto'?(v<0?'neg':v>0?'pos':''):colored==='purple'?'purple':(colored||'');
+        const disp=v===0?'—':(colored==='purple'||colored==='auto'&&v!==0)?fmtBRL(Math.abs(v)):fmtBRL(Math.abs(v));
+        return `<td class="${c}" style="text-align:right">${v===0&&colored!=='purple'?'—':fmtBRL(v)}</td>`;
+      }).join('')}
+    </tr>`;
   };
 
-  $('cfTable').innerHTML=`<thead><tr><th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}<th>Total</th></tr></thead><tbody>
-    ${row('Receitas',[...monthly.map(m=>m.inc),tot.inc],false,'pos')}
-    ${row('↳ Desp. Fixas',[...monthly.map(m=>-m.fi),-tot.fi],false,'neg')}
-    ${row('↳ Desp. Variáveis',[...monthly.map(m=>-m.va),-tot.va],false,'neg')}
-    ${row('Total Despesas',[...monthly.map(m=>-m.tot),-tot.tot],true,'neg')}
-    ${row('Saldo Bruto',[...monthly.map(m=>m.bal),tot.bal],true,'auto')}
-    ${reserve>0?row('(-) Meta de Reserva',[...monthly.map(m=>-m.reserve),-tot.reserve],false,'neg'):''}
-    ${reserve>0?row('Saldo Líquido',[...monthly.map(m=>m.balAfterReserve),tot.balAfterReserve],true,'auto'):''}
-  </tbody>`;
+  // Simpler row builder for clean output
+  const mkRow=(lbl,vals,cls,colored)=>`<tr class="${cls||''}"><td>${lbl}</td>${vals.map(v=>{
+    let colorCls='';
+    if(colored==='pos') colorCls='pos';
+    else if(colored==='neg') colorCls='neg';
+    else if(colored==='auto') colorCls=v<0?'neg':v>0?'pos':'';
+    else if(colored==='purple') colorCls='purple';
+    return `<td class="${colorCls}" style="text-align:right">${fmtBRL(Math.abs(v))==='R$\u00a00,00'&&colored!=='purple'?'—':colored==='neg'&&v!==0?fmtBRL(-Math.abs(v)):fmtBRL(v)}</td>`;
+  }).join('')}</tr>`;
 
+  const hasReserve=reserve>0;
+  const patriRowVals=[...patrimonioMensal, finalPatrimonio];
+
+  $('cfTable').innerHTML=`
+    <thead><tr><th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}<th>Ano</th></tr></thead>
+    <tbody>
+      <tr><td>Receitas</td>${monthly.map(m=>`<td class="${m.inc>0?'pos':''}" style="text-align:right">${m.inc?fmtBRL(m.inc):'—'}</td>`).join('')}<td class="pos" style="text-align:right">${tot.inc?fmtBRL(tot.inc):'—'}</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text3)">↳ Desp. Fixas</td>${monthly.map(m=>`<td class="${m.fi>0?'neg':''}" style="text-align:right">${m.fi?fmtBRL(-m.fi):'—'}</td>`).join('')}<td class="${tot.fi>0?'neg':''}" style="text-align:right">${tot.fi?fmtBRL(-tot.fi):'—'}</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text3)">↳ Desp. Variáveis</td>${monthly.map(m=>`<td class="${m.va>0?'neg':''}" style="text-align:right">${m.va?fmtBRL(-m.va):'—'}</td>`).join('')}<td class="${tot.va>0?'neg':''}" style="text-align:right">${tot.va?fmtBRL(-tot.va):'—'}</td></tr>
+      <tr class="subtotal"><td>Total Despesas</td>${monthly.map(m=>`<td class="${m.tot>0?'neg':''}" style="text-align:right">${m.tot?fmtBRL(-m.tot):'—'}</td>`).join('')}<td class="${tot.tot>0?'neg':''}" style="text-align:right">${tot.tot?fmtBRL(-tot.tot):'—'}</td></tr>
+      <tr class="subtotal"><td>Saldo Bruto</td>${monthly.map(m=>`<td class="${m.bal>0?'pos':m.bal<0?'neg':''}" style="text-align:right">${m.bal?fmtBRL(m.bal):'—'}</td>`).join('')}<td class="${tot.bal>0?'pos':tot.bal<0?'neg':''}" style="text-align:right">${tot.bal?fmtBRL(tot.bal):'—'}</td></tr>
+      ${hasReserve?`<tr><td style="color:var(--text3)">(-) Meta de Reserva</td>${monthly.map(m=>`<td class="neg" style="text-align:right">${m.inc>0||m.tot>0?fmtBRL(-reserve):'—'}</td>`).join('')}<td class="neg" style="text-align:right">${fmtBRL(-tot.reserve)}</td></tr>`:''}
+      ${hasReserve?`<tr class="subtotal"><td>Saldo Líquido</td>${monthly.map(m=>`<td class="${m.balAfterReserve>0?'pos':m.balAfterReserve<0?'neg':''}" style="text-align:right">${m.inc>0||m.tot>0?fmtBRL(m.balAfterReserve):'—'}</td>`).join('')}<td class="${tot.balAfterReserve>0?'pos':tot.balAfterReserve<0?'neg':''}" style="text-align:right">${fmtBRL(tot.balAfterReserve)}</td></tr>`:''}
+      <tr class="patrimonio"><td>💎 Patrimônio Acumulado<br><span style="font-size:10px;font-weight:400;color:var(--text3)">Início: ${fmtBRL(patrimonioInicial)}</span></td>${patrimonioMensal.map(v=>`<td class="purple" style="text-align:right">${fmtBRL(v)}</td>`).join('')}<td class="purple" style="text-align:right">${fmtBRL(finalPatrimonio)}</td></tr>
+    </tbody>`;
+
+  // Bar chart
   if(flowChartI)flowChartI.destroy();
-  flowChartI=new Chart($('flowChart').getContext('2d'),{type:'bar',data:{labels:MONTHS_S,datasets:[{label:'Receitas',data:monthly.map(m=>m.inc),backgroundColor:'rgba(94,234,212,.7)',borderRadius:5},{label:'Despesas',data:monthly.map(m=>m.tot),backgroundColor:'rgba(248,113,113,.7)',borderRadius:5},{label:'Reserva',data:monthly.map(m=>m.reserve>0?m.reserve:0),backgroundColor:'rgba(251,191,36,.5)',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.03)'}}}}});
+  flowChartI=new Chart($('flowChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:MONTHS_S,datasets:[
+      {label:'Receitas',data:monthly.map(m=>m.inc),backgroundColor:'rgba(94,234,212,.7)',borderRadius:5},
+      {label:'Despesas',data:monthly.map(m=>m.tot),backgroundColor:'rgba(248,113,113,.7)',borderRadius:5},
+      {label:'Reserva',data:monthly.map(m=>(m.inc>0||m.tot>0)&&reserve>0?reserve:0),backgroundColor:'rgba(251,191,36,.45)',borderRadius:5}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.03)'}}}}
+  });
+
+  // Patrimônio line chart
+  if(patriChartI)patriChartI.destroy();
+  patriChartI=new Chart($('patriChart').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:MONTHS_S,
+      datasets:[{
+        label:'Patrimônio',
+        data:patrimonioMensal,
+        borderColor:'#a78bfa',
+        backgroundColor:'rgba(167,139,250,.12)',
+        borderWidth:2.5,
+        pointBackgroundColor:'#a78bfa',
+        pointRadius:4,
+        pointHoverRadius:6,
+        fill:true,
+        tension:0.35
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>` Patrimônio: ${fmtBRL(ctx.raw)}`}}
+      },
+      scales:{
+        x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},
+        y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
 }
 
 // SIDEBAR MOBILE TOGGLE
