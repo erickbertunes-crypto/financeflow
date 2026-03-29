@@ -201,6 +201,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .inst-table td{padding:11px 16px;border-bottom:1px solid var(--border)}
 .inst-table tr:last-child td{border-bottom:none}
 .inst-table tr:hover td{background:var(--surface2)}
+/* SETTINGS / CATEGORIES */
+.cat-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:12px;font-weight:500;cursor:default;transition:all .15s}
+.cat-chip:hover{border-color:var(--border2)}
+.cat-chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cat-chip-actions{display:flex;gap:2px;margin-left:2px}
+.cat-chip-btn{background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:1px 3px;border-radius:3px;transition:color .15s;line-height:1}
+.cat-chip-btn:hover{color:var(--text)}
+.cat-chip-btn.del:hover{color:var(--red)}
+.color-swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
+.color-swatch.selected{border-color:#fff;transform:scale(1.15)}
 /* SHARED CASHFLOW */
 .shared-col-hdr{text-align:center;padding:14px 16px;border-radius:var(--radius) var(--radius) 0 0;font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
 .shared-col-me{background:linear-gradient(135deg,rgba(94,234,212,.15),rgba(94,234,212,.05));border:1px solid rgba(94,234,212,.25)}
@@ -298,6 +308,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="nav-item" onclick="gotoPage('cashflow')"><span class="ni">📈</span> Fluxo de Caixa</div>
       <div class="nav-item" onclick="gotoPage('shared')"><span class="ni">💑</span> Fluxo Compartilhado</div>
       <div class="nav-item" onclick="gotoPage('credit')"><span class="ni">💳</span> Cartão de Crédito</div>
+      <div class="nav-sec">Sistema</div>
+      <div class="nav-item" onclick="gotoPage('settings')"><span class="ni">⚙️</span> Configurações</div>
     </div>
     <div class="sidebar-foot">
       <div class="user-row">
@@ -450,6 +462,31 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         </div>
       </div>
     </div>
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-hdr">
+        <div><div class="page-title">Configurações</div><div class="page-sub">Personalize seu app</div></div>
+      </div>
+      <!-- CATEGORIES -->
+      <div class="sec-card" style="margin-bottom:18px">
+        <div class="sec-hdr">
+          <div>
+            <div class="sec-title">Categorias</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">Adicione, renomeie ou remova categorias</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddCatModal()">+ Nova Categoria</button>
+        </div>
+        <div style="padding:16px 18px">
+          <!-- EXPENSE CATEGORIES -->
+          <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-weight:600;margin-bottom:10px">Despesas</div>
+          <div id="catListExpense" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px"></div>
+          <!-- INCOME CATEGORIES -->
+          <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-weight:600;margin-bottom:10px">Receitas</div>
+          <div id="catListIncome" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- CREDIT -->
     <div class="page" id="page-credit">
       <div class="page-hdr"><div><div class="page-title">Cartão de Crédito</div><div class="page-sub">Fatura e limite do mês</div></div></div>
@@ -497,10 +534,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="form-group" style="margin:0"><label class="form-label">Categoria *</label>
         <select class="form-input" id="txCat">
           <option value="">Selecione...</option>
-          <option>Saúde</option><option>Transporte</option><option>Lazer</option><option>Supermercado</option>
-          <option>Autocuidado</option><option>Educação</option><option>Restaurante</option><option>Assinaturas</option>
-          <option>Vestuário</option><option>Eletrônicos</option><option>Presentes</option><option>Enxoval</option>
-          <option>Tarifa Bancária</option><option>Reembolso</option><option>Salário</option><option>Benefícios</option><option>Outros</option>
         </select>
       </div>
     </div>
@@ -541,15 +574,43 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="modal-title"><span>Definir Meta</span><button class="btn-icon" onclick="closeBudgetModal()" style="font-size:17px">✕</button></div>
     <div class="form-group"><label class="form-label">Categoria</label>
       <select class="form-input" id="budCat">
-        <option>Saúde</option><option>Transporte</option><option>Lazer</option><option>Supermercado</option>
-        <option>Autocuidado</option><option>Educação</option><option>Restaurante</option><option>Assinaturas</option>
-        <option>Vestuário</option><option>Eletrônicos</option><option>Presentes</option><option>Outros</option>
+        <option value="">Selecione...</option>
       </select>
     </div>
     <div class="form-group"><label class="form-label">Limite Mensal (R$)</label><input class="form-input" type="number" id="budLimit" placeholder="0,00" step="0.01" min="0"></div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeBudgetModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveBudget()">Salvar Meta</button>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY MODAL -->
+<div class="modal-ov" id="catModal" onclick="if(event.target===this)closeCatModal()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title"><span id="catModalTitle">Nova Categoria</span><button class="btn-icon" onclick="closeCatModal()" style="font-size:17px">✕</button></div>
+    <div class="form-group">
+      <label class="form-label">Nome da Categoria *</label>
+      <input class="form-input" type="text" id="catName" placeholder="Ex: Academia, Pet, Viagem...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ícone (emoji)</label>
+      <input class="form-input" type="text" id="catEmoji" placeholder="🏷️" maxlength="4" style="font-size:20px;text-align:center;width:80px">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cor</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="catColorPicker"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo</label>
+      <div style="display:flex;gap:8px">
+        <button class="type-btn expense active" id="catTypeExpense" onclick="setCatType('expense',this)" style="flex:1;padding:8px">Despesa</button>
+        <button class="type-btn income" id="catTypeIncome" onclick="setCatType('income',this)" style="flex:1;padding:8px">Receita</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeCatModal()">Cancelar</button>
+      <button class="btn btn-primary" id="catSaveBtn" onclick="saveCat()">Salvar</button>
     </div>
   </div>
 </div>
@@ -609,11 +670,43 @@ const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BR
 const fmtDate= s => { try{ const[y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }catch{ return s; } };
 const genId  = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
-const CAT_COLOR={'Saúde':'#f472b6','Transporte':'#60a5fa','Lazer':'#f87171','Supermercado':'#5eead4','Autocuidado':'#f9a8d4','Educação':'#67e8f9','Restaurante':'#fb923c','Assinaturas':'#a78bfa','Vestuário':'#fbbf24','Eletrônicos':'#c084fc','Presentes':'#86efac','Enxoval':'#6ee7b7','Tarifa Bancária':'#94a3b8','Reembolso':'#34d399','Salário':'#5eead4','Benefícios':'#60a5fa','Outros':'#545e78'};
-const CAT_ICON={'Saúde':'🏥','Transporte':'🚗','Lazer':'🎮','Supermercado':'🛒','Autocuidado':'💆','Educação':'📚','Restaurante':'🍽️','Assinaturas':'📱','Vestuário':'👗','Eletrônicos':'💻','Presentes':'🎁','Enxoval':'🛏️','Tarifa Bancária':'🏦','Reembolso':'↩️','Salário':'💼','Benefícios':'⭐','Outros':'📦'};
 const PAY_LABEL={card:'Cartão',pix:'Pix',debit:'Débito',cash:'Dinheiro',transfer:'Transferência'};
-const catColor=c=>CAT_COLOR[c]||'#545e78';
-const catIcon =c=>CAT_ICON[c]||'📌';
+
+// DEFAULT CATEGORIES
+const DEFAULT_CATS=[
+  {name:'Saúde',icon:'🏥',color:'#f472b6',type:'expense'},
+  {name:'Transporte',icon:'🚗',color:'#60a5fa',type:'expense'},
+  {name:'Lazer',icon:'🎮',color:'#f87171',type:'expense'},
+  {name:'Supermercado',icon:'🛒',color:'#5eead4',type:'expense'},
+  {name:'Autocuidado',icon:'💆',color:'#f9a8d4',type:'expense'},
+  {name:'Educação',icon:'📚',color:'#67e8f9',type:'expense'},
+  {name:'Restaurante',icon:'🍽️',color:'#fb923c',type:'expense'},
+  {name:'Assinaturas',icon:'📱',color:'#a78bfa',type:'expense'},
+  {name:'Vestuário',icon:'👗',color:'#fbbf24',type:'expense'},
+  {name:'Eletrônicos',icon:'💻',color:'#c084fc',type:'expense'},
+  {name:'Presentes',icon:'🎁',color:'#86efac',type:'expense'},
+  {name:'Enxoval',icon:'🛏️',color:'#6ee7b7',type:'expense'},
+  {name:'Tarifa Bancária',icon:'🏦',color:'#94a3b8',type:'expense'},
+  {name:'Reembolso',icon:'↩️',color:'#34d399',type:'expense'},
+  {name:'Outros',icon:'📦',color:'#545e78',type:'expense'},
+  {name:'Salário',icon:'💼',color:'#5eead4',type:'income'},
+  {name:'Benefícios',icon:'⭐',color:'#60a5fa',type:'income'},
+  {name:'Freelance',icon:'🖥️',color:'#a78bfa',type:'income'},
+];
+const PALETTE=['#f472b6','#60a5fa','#f87171','#5eead4','#fb923c','#a78bfa','#fbbf24','#c084fc','#86efac','#67e8f9','#f9a8d4','#34d399','#94a3b8','#545e78','#f43f5e','#10b981'];
+
+function getCats(){ return (userData.categories&&userData.categories.length)?userData.categories:[...DEFAULT_CATS]; }
+function getCatsByType(type){ return getCats().filter(c=>c.type===type); }
+const catColor=c=>{ const f=getCats().find(x=>x.name===c); return f?f.color:'#545e78'; };
+const catIcon =c=>{ const f=getCats().find(x=>x.name===c); return f?f.icon:'📌'; };
+
+function populateCatSelects(){
+  const exp=getCatsByType('expense'), inc=getCatsByType('income');
+  const txCat=$('txCat');
+  if(txCat){ const cur=txCat.value; txCat.innerHTML=`<option value="">Selecione...</option><optgroup label="Despesas">${exp.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('')}</optgroup><optgroup label="Receitas">${inc.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('')}</optgroup>`; if(cur)txCat.value=cur; }
+  const bCat=$('budCat');
+  if(bCat){ const cur=bCat.value; bCat.innerHTML=exp.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join(''); if(cur)bCat.value=cur; }
+}
 
 // FIRESTORE
 const userRef=()=>doc(db,'users',curUser.uid);
@@ -621,12 +714,12 @@ const txCol  =()=>collection(db,'users',curUser.uid,'transactions');
 
 async function loadUserData(){
   const snap=await getDoc(userRef());
-  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.patrimonio=d.patrimonio||0; }
+  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.patrimonio=d.patrimonio||0; userData.categories=d.categories||[]; }
   const txSnap=await getDocs(txCol());
   userData.transactions=[];
   txSnap.forEach(d=>userData.transactions.push({id:d.id,...d.data()}));
 }
-async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,patrimonio:userData.patrimonio||0},{merge:true}); }
+async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,patrimonio:userData.patrimonio||0,categories:userData.categories||[]},{merge:true}); }
 async function fsAddTx(tx){ const{id,...data}=tx; const ref=await addDoc(txCol(),{...data,createdAt:serverTimestamp()}); return ref.id; }
 async function fsUpdateTx(id,data){ await setDoc(doc(db,'users',curUser.uid,'transactions',id),data,{merge:true}); }
 async function fsDeleteTx(id){ await deleteDoc(doc(db,'users',curUser.uid,'transactions',id)); }
@@ -710,6 +803,7 @@ function setupUI(){
   $('cfYear').innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); $('cfYear').value=curYear;
   if(userData.reserve>0) $('cfReserve').value=userData.reserve;
   if(userData.patrimonio>0) $('cfPatrimonio').value=userData.patrimonio;
+  populateCatSelects();
 }
 
 // MONTH NAV
@@ -729,6 +823,7 @@ window.gotoPage=function(name){
   if(name==='credit')renderCredit();
   if(name==='cashflow')renderCashflow();
   if(name==='shared')renderSharedPage();
+  if(name==='settings')renderSettings();
 };
 
 // TX MODAL
@@ -1107,6 +1202,7 @@ function renderAll(){
   if(active==='cashflow')renderCashflow();
   if(active==='installments')renderInstallments();
   if(active==='shared')renderSharedPage();
+  if(active==='settings')renderSettings();
 }
 
 // ============ SHARED CASHFLOW ============
@@ -1389,7 +1485,10 @@ async function renderShared(status){
 
   $('sharedSub').textContent=`${myName} & ${partnerName} — ${year}`;
 }
-window.renderShared=async function(){ const s=await loadSharedStatus(); if(s?.status==='connected')await renderShared(s); };
+// expose to global onclick
+window.renderAll=renderAll;
+window.openTxModal=openTxModal;
+window.closeTxModal=closeTxModal;
 
 // TOAST
 window.toast=function(ico,msg){ $('toastIco').textContent=ico; $('toastMsg').textContent=msg; const t=$('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); };
@@ -1399,10 +1498,134 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeTxModal(); c
 $('lPass').addEventListener('keydown',e=>{ if(e.key==='Enter')doLogin(); });
 $('rPass2').addEventListener('keydown',e=>{ if(e.key==='Enter')doRegister(); });
 
-// expose to global onclick
-window.renderAll=renderAll;
-window.openTxModal=openTxModal;
-window.closeTxModal=closeTxModal;
+// ============ SETTINGS / CATEGORIES ============
+let editingCatIndex=-1; // -1 = new, else index in getCats()
+let selectedCatColor=PALETTE[0];
+let catModalType='expense';
+
+function renderSettings(){
+  const exp=getCatsByType('expense');
+  const inc=getCatsByType('income');
+  const makeChip=(cat,idx)=>`
+    <div class="cat-chip">
+      <div class="cat-chip-dot" style="background:${cat.color}"></div>
+      <span>${cat.icon} ${cat.name}</span>
+      <div class="cat-chip-actions">
+        <button class="cat-chip-btn" onclick="openEditCatModal(${idx})" title="Renomear">✏️</button>
+        <button class="cat-chip-btn del" onclick="deleteCat(${idx})" title="Excluir">✕</button>
+      </div>
+    </div>`;
+  // We need global indices — getCats() returns all
+  const all=getCats();
+  const expChips=all.map((c,i)=>c.type==='expense'?makeChip(c,i):'').join('');
+  const incChips=all.map((c,i)=>c.type==='income'?makeChip(c,i):'').join('');
+  $('catListExpense').innerHTML=expChips||`<span style="font-size:12px;color:var(--text3)">Nenhuma categoria de despesa.</span>`;
+  $('catListIncome').innerHTML=incChips||`<span style="font-size:12px;color:var(--text3)">Nenhuma categoria de receita.</span>`;
+}
+
+window.openAddCatModal=function(){
+  editingCatIndex=-1; catModalType='expense'; selectedCatColor=PALETTE[0];
+  $('catModalTitle').textContent='Nova Categoria';
+  $('catName').value=''; $('catEmoji').value='🏷️';
+  $('catSaveBtn').textContent='Adicionar';
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  $('catTypeExpense').classList.add('active');
+  renderColorPicker();
+  $('catModal').classList.add('open');
+};
+
+window.openEditCatModal=function(idx){
+  editingCatIndex=idx;
+  const cat=getCats()[idx];
+  catModalType=cat.type; selectedCatColor=cat.color;
+  $('catModalTitle').textContent='Editar Categoria';
+  $('catName').value=cat.name; $('catEmoji').value=cat.icon;
+  $('catSaveBtn').textContent='Salvar';
+  document.querySelectorAll('#catModal .type-btn').forEach(b=>b.classList.remove('active'));
+  if(cat.type==='expense') $('catTypeExpense').classList.add('active');
+  else $('catTypeIncome').classList.add('active');
+  renderColorPicker();
+  $('catModal').classList.add('open');
+};
+
+window.closeCatModal=function(){ $('catModal').classList.remove('open'); };
+
+window.setCatType=function(type,btn){
+  catModalType=type;
+  document.querySelectorAll('#catModal .type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+};
+
+function renderColorPicker(){
+  $('catColorPicker').innerHTML=PALETTE.map(c=>`
+    <div class="color-swatch ${c===selectedCatColor?'selected':''}" style="background:${c}" onclick="selectColor('${c}')"></div>
+  `).join('');
+}
+
+window.selectColor=function(c){
+  selectedCatColor=c;
+  renderColorPicker();
+};
+
+window.saveCat=async function(){
+  const name=$('catName').value.trim();
+  const icon=$('catEmoji').value.trim()||'🏷️';
+  if(!name){ toast('⚠️','Informe o nome da categoria.'); return; }
+
+  let cats=[...getCats()];
+
+  if(editingCatIndex===-1){
+    // New category
+    if(cats.find(c=>c.name.toLowerCase()===name.toLowerCase())){ toast('⚠️','Já existe uma categoria com esse nome.'); return; }
+    cats.push({name,icon,color:selectedCatColor,type:catModalType});
+    toast('✅',`Categoria "${name}" criada!`);
+  } else {
+    // Edit existing
+    const oldName=cats[editingCatIndex].name;
+    cats[editingCatIndex]={name,icon,color:selectedCatColor,type:catModalType};
+    // Update all transactions using the old name
+    if(oldName!==name){
+      userData.transactions.forEach(t=>{ if(t.category===oldName) t.category=name; });
+      // Batch update in Firestore (best effort)
+      userData.transactions.filter(t=>t.category===name).forEach(async t=>{
+        try{ await setDoc(doc(db,'users',curUser.uid,'transactions',t.id),{category:name},{merge:true}); }catch(e){}
+      });
+      // Update budgets key
+      if(userData.budgets[oldName]!==undefined){
+        userData.budgets[name]=userData.budgets[oldName];
+        delete userData.budgets[oldName];
+      }
+    }
+    toast('✏️',`Categoria "${name}" atualizada!`);
+  }
+
+  userData.categories=cats;
+  await saveSettings();
+  closeCatModal();
+  populateCatSelects();
+  renderSettings();
+  renderAll();
+};
+
+window.deleteCat=async function(idx){
+  const cat=getCats()[idx];
+  const usedCount=userData.transactions.filter(t=>t.category===cat.name).length;
+  const msg=usedCount>0
+    ? `Excluir "${cat.name}"? Ela está em ${usedCount} lançamento(s). Os lançamentos continuarão existindo mas sem categoria.`
+    : `Excluir a categoria "${cat.name}"?`;
+  if(!confirm(msg))return;
+
+  let cats=[...getCats()];
+  cats.splice(idx,1);
+  // Remove from budgets too
+  if(userData.budgets[cat.name]) delete userData.budgets[cat.name];
+  userData.categories=cats;
+  await saveSettings();
+  populateCatSelects();
+  renderSettings();
+  renderAll();
+  toast('🗑️',`Categoria "${cat.name}" removida.`);
+};
 </script>
 </body>
 </html>
