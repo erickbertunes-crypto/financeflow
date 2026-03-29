@@ -601,51 +601,32 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <!-- IMPORT INVOICE PAGE -->
     <div class="page" id="page-import">
       <div class="page-hdr">
-        <div><div class="page-title">Importar Fatura 📸</div><div class="page-sub">Fotografe sua fatura — a IA categoriza automaticamente</div></div>
+        <div><div class="page-title">Importar Planilha 📊</div><div class="page-sub">Suba seu Excel e o app lança tudo automaticamente</div></div>
+        <a href="FinanceFlow_Modelo.xlsx" download class="btn btn-ghost" style="display:flex;align-items:center;gap:6px">⬇️ Baixar Modelo</a>
       </div>
 
       <div class="sec-card" style="margin-bottom:16px">
-        <div class="sec-hdr"><div class="sec-title">1. Selecionar fotos da fatura</div></div>
+        <div class="sec-hdr"><div class="sec-title">1. Selecionar arquivo Excel (.xlsx)</div></div>
         <div style="padding:16px 18px">
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-
-            <!-- GALERIA: input visível mas sobreposto pelo label -->
-            <div style="position:relative;border-radius:12px;overflow:hidden">
-              <input type="file" multiple accept="image/*" id="inp_gallery"
-                style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2">
-              <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:2px solid var(--border2);border-radius:12px;padding:22px 12px;text-align:center;pointer-events:none">
-                <span style="font-size:32px">🖼️</span>
-                <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Galeria</span>
-                <span style="font-size:10px;color:var(--text3)">Selecionar prints</span>
-              </div>
-            </div>
-
-            <!-- CÂMERA: mesmo padrão -->
-            <div style="position:relative;border-radius:12px;overflow:hidden">
-              <input type="file" accept="image/*" capture="environment" id="inp_camera"
-                style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2">
-              <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:2px solid var(--border2);border-radius:12px;padding:22px 12px;text-align:center;pointer-events:none">
-                <span style="font-size:32px">📷</span>
-                <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Câmera</span>
-                <span style="font-size:10px;color:var(--text3)">Fotografar agora</span>
-              </div>
+          <!-- Overlay input — works on all browsers/mobile -->
+          <div style="position:relative;border-radius:12px;overflow:hidden;margin-bottom:14px">
+            <input type="file" accept=".xlsx,.xls,.csv" id="inp_xlsx"
+              style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--surface2);border:2px dashed var(--border2);border-radius:12px;padding:28px 12px;text-align:center;pointer-events:none">
+              <span style="font-size:40px">📊</span>
+              <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text)">Toque para selecionar o arquivo</span>
+              <span style="font-size:11px;color:var(--text3)">.xlsx • .xls • .csv</span>
             </div>
           </div>
-
-          <div id="importStatus" style="font-size:13px;color:var(--text2);text-align:center;padding:6px;min-height:22px">Nenhuma imagem selecionada</div>
-          <div id="importPreview" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px"></div>
-          <div id="importClearBtn" style="display:none;text-align:center;margin-top:12px">
-            <button class="btn btn-danger btn-sm" onclick="clearImportImages()">✕ Remover todas</button>
-          </div>
+          <div id="xlsxStatus" style="font-size:13px;color:var(--text2);text-align:center;min-height:20px">Nenhum arquivo selecionado</div>
         </div>
       </div>
 
       <div class="sec-card" style="margin-bottom:16px">
-        <div class="sec-hdr"><div class="sec-title">2. Mês de competência da fatura</div></div>
+        <div class="sec-hdr"><div class="sec-title">2. Mês de competência desta carga</div></div>
         <div style="padding:14px 18px">
           <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px">
-            <input type="month" class="form-input" id="importComp" style="width:auto">
+            <input type="month" class="form-input" id="xlsxComp" style="width:auto">
             <div style="font-size:12px;color:var(--text3)">= mês em que a fatura será paga</div>
           </div>
           <div style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:8px;padding:8px 12px">
@@ -655,26 +636,23 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       </div>
 
       <div style="margin-bottom:18px">
-        <button class="btn btn-primary" id="importBtn" onclick="processInvoice()" style="width:100%;padding:14px;font-size:15px">🤖 Processar com IA e Categorizar</button>
-        <div id="importProgress" style="display:none;margin-top:12px">
-          <div style="height:5px;background:var(--surface3);border-radius:3px;overflow:hidden">
-            <div id="importProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width .6s ease;border-radius:3px"></div>
-          </div>
-          <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:6px" id="importProgressText">Analisando...</div>
-        </div>
+        <button class="btn btn-primary" id="xlsxProcessBtn" onclick="processXlsx()" style="width:100%;padding:14px;font-size:15px">
+          📥 Processar Planilha
+        </button>
+        <div id="xlsxProgress" style="display:none;margin-top:10px;text-align:center;font-size:12px;color:var(--text2)" id="xlsxProgressText">Lendo arquivo...</div>
       </div>
 
-      <div id="importResults" style="display:none">
+      <div id="xlsxResults" style="display:none">
         <div class="sec-card" style="margin-bottom:16px">
           <div class="sec-hdr">
-            <div><div class="sec-title">3. Revisar e Confirmar</div><div style="font-size:11px;color:var(--text3);margin-top:2px" id="importResultsSub"></div></div>
+            <div><div class="sec-title">3. Revisar e Confirmar</div><div style="font-size:11px;color:var(--text3);margin-top:2px" id="xlsxResultsSub"></div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-ghost btn-sm" onclick="importSelectAll()">Sel. todos</button>
-              <button class="btn btn-primary" id="importConfirmBtn" onclick="confirmImport()">✓ Importar</button>
+              <button class="btn btn-ghost btn-sm" onclick="xlsxSelectAll()">Sel. todos</button>
+              <button class="btn btn-primary" id="xlsxConfirmBtn" onclick="confirmXlsx()">✓ Importar</button>
             </div>
           </div>
-          <div id="importTotalCheck" style="padding:12px 18px;border-bottom:1px solid var(--border)"></div>
-          <div id="importItemsList"></div>
+          <div id="xlsxTotalCheck" style="padding:12px 18px;border-bottom:1px solid var(--border)"></div>
+          <div id="xlsxItemsList"></div>
         </div>
       </div>
     </div>
@@ -2296,343 +2274,302 @@ window.applyAutocomplete=function(s){
 // Close dropdown when clicking outside
 document.addEventListener('click',e=>{ if(!e.target.closest('#txDesc')&&!e.target.closest('#acDropdown')) { const d=$('acDropdown'); if(d) d.style.display='none'; } });
 
-// ============ INVOICE IMPORT ============
-// Use window._importImages so the non-module upload script can write to it
-window._importImages = window._importImages || [];
-Object.defineProperty(window, 'importImages', {
-  get(){ return window._importImages; },
-  set(v){ window._importImages = v; }
-});
-let importImages = window._importImages;
-let importParsed=[]; // parsed items from AI
-let importSelected=new Set();
+// ============ XLSX IMPORT ============
+let xlsxParsed = [];
+let xlsxSelected = new Set();
 
-// Wire import file inputs ONCE after page loads
-function wireImportInputsOnce(){
-  const g=document.getElementById('inp_gallery');
-  const c=document.getElementById('inp_camera');
-  if(g && !g._wired){
-    g._wired=true;
-    g.addEventListener('change',function(){
+// Wire xlsx input once
+(function(){
+  function wire(){
+    const el = document.getElementById('inp_xlsx');
+    if(!el || el._wired) return;
+    el._wired = true;
+    el.addEventListener('change', function(){
       if(this.files && this.files.length){
-        handleImportFiles(this.files);
-        this.value=''; // allow re-selecting same file
+        readXlsxFile(this.files[0]);
+        this.value = '';
       }
     });
   }
-  if(c && !c._wired){
-    c._wired=true;
-    c.addEventListener('change',function(){
-      if(this.files && this.files.length){
-        handleImportFiles(this.files);
-        this.value='';
-      }
-    });
-  }
-}
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+  // Also try after a delay (module scripts load late)
+  setTimeout(wire, 500);
+  setTimeout(wire, 1500);
+})();
 
 function renderImportPage(){
-  // Set default competency = next month
-  if(!$('importComp').value){
-    const nm=new Date(new Date().getFullYear(),new Date().getMonth()+1,1);
-    $('importComp').value=nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0');
+  const el = document.getElementById('inp_xlsx');
+  if(el && !el._wired){
+    el._wired = true;
+    el.addEventListener('change', function(){
+      if(this.files && this.files.length){ readXlsxFile(this.files[0]); this.value=''; }
+    });
   }
-  // Wire inputs (safe to call multiple times — only wires once)
-  wireImportInputsOnce();
+  if(!$('xlsxComp').value){
+    const nm = new Date(new Date().getFullYear(), new Date().getMonth()+1, 1);
+    $('xlsxComp').value = nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0');
+  }
 }
 
-window.clearImportImages=function(){
-  window._importImages=[];
-  importImages=window._importImages;
-  $('importPreview').innerHTML='';
-  $('importStatus').textContent='Nenhuma imagem selecionada';
-  $('importClearBtn').style.display='none';
-};
-
-window.handleImportDrop=function(e){
-  e.preventDefault();
-  handleImportFiles(e.dataTransfer.files);
-};
-
-window.handleImportFiles=function(files){
-  const fileArr=Array.from(files).filter(f=>f.type.startsWith('image/'));
-  if(!fileArr.length){ toast('⚠️','Selecione imagens JPG, PNG ou WebP.'); return; }
-  const prev=$('importPreview');
-
-  let loaded=0;
-  fileArr.forEach(file=>{
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const b64=e.target.result;
-      importImages.push(b64);
-      loaded++;
-
-      // Thumbnail
-      const thumb=document.createElement('div');
-      thumb.style.cssText='position:relative;width:90px;height:90px;border-radius:10px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0';
-      thumb.innerHTML=`<img src="${b64}" style="width:100%;height:100%;object-fit:cover">
-        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);font-size:9px;color:#fff;text-align:center;padding:2px">${(file.size/1024).toFixed(0)}KB</div>`;
-      prev.appendChild(thumb);
-
-      // Update status
-      $('importStatus').innerHTML=`<span style="color:var(--accent);font-weight:600">✓ ${importImages.length} imagem(ns) pronta(s) para processar</span>`;
-      $('importClearBtn').style.display='block';
-    };
-    reader.onerror=()=>toast('❌',`Erro ao ler ${file.name}`);
-    reader.readAsDataURL(file);
-  });
-  toast('✅',`${fileArr.length} imagem(ns) carregada(s)!`);
-};
-
-window.processInvoice=async function(){
-  const imgs = window._importImages || [];
-
-  // DEBUG: show what we have
-  const debugEl=$('importProgressText');
-  $('importProgress').style.display='block';
-  debugEl.style.color='var(--text2)';
-  debugEl.textContent='Imagens: '+imgs.length+' | Iniciando...';
-
-  if(!imgs.length){ toast('⚠️','Adicione pelo menos uma imagem da fatura.'); return; }
-  const comp=$('importComp').value;
-  if(!comp){ toast('⚠️','Selecione o mês de competência.'); return; }
-
-  const btn=$('importBtn');
-  btn.disabled=true; btn.textContent='⏳ Processando...';
-  $('importProgressBar').style.width='10%';
-
-  let prog=10;
-  const progInterval=setInterval(()=>{
-    prog=Math.min(prog+3,85);
-    $('importProgressBar').style.width=prog+'%';
-  },1000);
-
-  try{
-    debugEl.textContent='Preparando imagens ('+imgs.length+')...';
-
-    const hist=buildHistory();
-    const histSummary=Object.values(hist).slice(0,50).map(h=>`"${h.desc}" → ${h.category}`).join('\n');
-    const cats=getCats().map(c=>c.name).join(', ');
-
-    debugEl.textContent='Chamando API... aguarde';
-
-    const body={
-      model:'claude-sonnet-4-20250514',
-      max_tokens:4000,
-      messages:[{
-        role:'user',
-        content:[
-          ...imgs.map(img=>{
-            const b64data=img.includes(',') ? img.split(',')[1] : img;
-            // Detect media type from base64 header
-            const mtype=img.startsWith('data:image/png')?'image/png':
-                         img.startsWith('data:image/webp')?'image/webp':'image/jpeg';
-            return {type:'image',source:{type:'base64',media_type:mtype,data:b64data}};
-          }),
-          {type:'text',text:`Analise esses prints de fatura de cartão e extraia TODOS os lançamentos (ignore pagamentos de fatura negativos).
-
-Categorias disponíveis: ${cats}
-
-Histórico do usuário:
-${histSummary}
-
-Mês de competência: ${comp}
-
-Responda SOMENTE em JSON válido sem markdown:
-{"total_fatura":0,"items":[{"desc":"nome","value":0,"date":"YYYY-MM-DD","category":"cat","expenseType":"variable","is_installment":false,"install_current":null,"install_total":null,"confidence":"high"}]}`}
-        ]
-      }]
-    };
-
-    debugEl.textContent='Enviando para IA... (pode demorar 20-30s)';
-
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify(body)
-    });
-
-    debugEl.textContent='Resposta recebida: HTTP '+res.status;
-
-    if(!res.ok){
-      const errText=await res.text();
-      debugEl.textContent='Erro HTTP '+res.status+': '+errText.slice(0,100);
-      debugEl.style.color='var(--red)';
-      return;
-    }
-
-    const data=await res.json();
-    debugEl.textContent='Parseando resposta...';
-
-    if(data.error){
-      debugEl.textContent='Erro API: '+data.error.message;
-      debugEl.style.color='var(--red)';
-      return;
-    }
-
-    const raw=data.content?.[0]?.text||'{}';
-    debugEl.textContent='Resposta IA: '+raw.slice(0,80)+'...';
-
-    let parsed;
+function readXlsxFile(file){
+  const statusEl = $('xlsxStatus');
+  statusEl.innerHTML = '<span style="color:var(--yellow)">⏳ Lendo arquivo...</span>';
+  
+  const reader = new FileReader();
+  reader.onload = function(e){
     try{
-      parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    }catch(e){
-      debugEl.textContent='Erro JSON: '+e.message+' | raw: '+raw.slice(0,100);
-      debugEl.style.color='var(--red)';
-      return;
+      const data = new Uint8Array(e.target.result);
+      parseXlsxData(data, file.name);
+    }catch(err){
+      statusEl.innerHTML = '<span style="color:var(--red)">Erro ao ler arquivo: '+err.message+'</span>';
     }
+  };
+  reader.onerror = ()=> statusEl.innerHTML = '<span style="color:var(--red)">Erro ao ler arquivo</span>';
+  reader.readAsArrayBuffer(file);
+}
 
-    importParsed=parsed.items||[];
-    importSelected=new Set(importParsed.map((_,i)=>i));
-
-    if(!importParsed.length){
-      debugEl.textContent='IA não encontrou lançamentos. Tente com imagens mais claras.';
-      debugEl.style.color='var(--yellow)';
-      return;
-    }
-
-    debugEl.textContent='✓ '+importParsed.length+' lançamentos encontrados!';
-    debugEl.style.color='var(--accent)';
-
-    renderImportResults(parsed.total_fatura||0, comp);
-    $('importResults').style.display='block';
-    setTimeout(()=>$('importResults').scrollIntoView({behavior:'smooth'}),300);
-
-  }catch(e){
-    const msg=e?.message||String(e);
-    debugEl.textContent='Erro: '+msg;
-    debugEl.style.color='var(--red)';
-    console.error('processInvoice error:',e);
-  }finally{
-    clearInterval(progInterval);
-    $('importProgressBar').style.width='100%';
-    setTimeout(()=>{ $('importProgressBar').style.width='0%'; },1000);
-    btn.disabled=false;
-    btn.textContent='🤖 Processar com IA e Categorizar';
+function parseXlsxData(data, filename){
+  const statusEl = $('xlsxStatus');
+  
+  // Check if SheetJS is available
+  if(typeof XLSX === 'undefined'){
+    // Load SheetJS dynamically
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = ()=> doParseXlsx(data, filename);
+    s.onerror = ()=> statusEl.innerHTML = '<span style="color:var(--red)">Erro ao carregar leitor de Excel</span>';
+    document.head.appendChild(s);
+  } else {
+    doParseXlsx(data, filename);
   }
-};
+}
 
-function renderImportResults(totalFatura, comp){
-  // Check for duplicates against existing transactions in same competency
-  const existingThisComp=userData.transactions.filter(t=>{
-    const k=t.competency||t.date.substr(0,7);
-    return k===comp;
-  });
+function doParseXlsx(data, filename){
+  const statusEl = $('xlsxStatus');
+  try{
+    const wb = XLSX.read(data, {type:'array', cellDates:true});
+    const sheetName = wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+    
+    if(!rows.length){
+      statusEl.innerHTML = '<span style="color:var(--red)">Planilha vazia ou formato inválido</span>';
+      return;
+    }
 
-  const totalSelected=importParsed.filter((_,i)=>importSelected.has(i)).reduce((s,t)=>s+t.value,0);
-  const diff=totalFatura>0?Math.abs(totalSelected-totalFatura):0;
+    // Normalize column names (flexible matching)
+    function findCol(row, ...keys){
+      for(const k of Object.keys(row)){
+        const kl = k.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g,'');
+        for(const key of keys){
+          if(kl.includes(key)) return row[k];
+        }
+      }
+      return '';
+    }
 
-  // Total check banner
-  $('importTotalCheck').innerHTML=`
-    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;width:100%">
-      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Total da Fatura</div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)">${fmtBRL(totalFatura)}</div></div>
-      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Total Selecionado</div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent)">${fmtBRL(totalSelected)}</div></div>
-      <div style="flex:1;min-width:200px">
-        ${totalFatura>0?(diff<1?'<span style="color:var(--accent);font-size:13px">✓ Total bate com a fatura!</span>':`<span style="color:var(--yellow);font-size:13px">⚠ Diferença de ${fmtBRL(diff)} — verifique os itens</span>`):''}
-      </div>
-      <div style="font-size:11px;color:var(--text3)">${importParsed.length} lançamentos encontrados · Competência: ${comp}</div>
+    const parsed = [];
+    // Skip instruction rows — only process rows with a value > 0
+    for(const row of rows){
+      const dateRaw = findCol(row,'data','date');
+      const desc    = String(findCol(row,'descricao','descri','desc','nome','name')||'').trim();
+      const valRaw  = findCol(row,'valor','value','val','preco','preco');
+      const cat     = String(findCol(row,'categoria','cat','category')||'').trim();
+      const tipo    = String(findCol(row,'tipo','type')||'variavel').toLowerCase().trim();
+      const parc    = String(findCol(row,'parcel','parcela','install')||'nao').toLowerCase().trim();
+
+      if(!desc || !valRaw) continue;
+
+      // Parse value
+      let value = 0;
+      if(typeof valRaw === 'number'){
+        value = valRaw;
+      } else {
+        const cleaned = String(valRaw).replace(/[R$\s]/g,'').replace(',','.').replace(/\.(?=.*\.)/g,'');
+        value = parseFloat(cleaned);
+      }
+      if(!value || value <= 0) continue;
+
+      // Parse date
+      let date = '';
+      if(dateRaw instanceof Date){
+        date = dateRaw.toISOString().split('T')[0];
+      } else if(dateRaw){
+        const ds = String(dateRaw).trim();
+        // Try DD/MM/YYYY
+        const m1 = ds.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+        if(m1) date = `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+        // Try YYYY-MM-DD
+        const m2 = ds.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if(m2) date = ds.split('T')[0];
+        // Excel serial number
+        if(!date && /^\d+$/.test(ds)){
+          const d = new Date(Math.round((parseInt(ds) - 25569) * 86400 * 1000));
+          date = d.toISOString().split('T')[0];
+        }
+      }
+      if(!date) date = new Date().toISOString().split('T')[0];
+
+      // Parse installment
+      let isInst = false, instCur = null, instTot = null;
+      if(parc && parc !== 'nao' && parc !== 'n' && parc !== '0'){
+        const pm = parc.match(/(\d+)\s*[/\\]\s*(\d+)/);
+        if(pm){ isInst=true; instCur=parseInt(pm[1]); instTot=parseInt(pm[2]); }
+      }
+
+      // Auto-categorize by history if empty
+      const finalCat = cat || guessCategoryFromHistory(desc) || 'Classificar';
+      const expType  = (tipo==='fixo'||tipo==='fixed') ? 'fixed' : 'variable';
+
+      parsed.push({desc, value, date, category:finalCat, expenseType:expType,
+        payment:'card', is_installment:isInst,
+        install_current:instCur, install_total:instTot});
+    }
+
+    if(!parsed.length){
+      statusEl.innerHTML = '<span style="color:var(--red)">Nenhuma linha válida encontrada. Verifique o formato.</span>';
+      return;
+    }
+
+    xlsxParsed = parsed;
+    xlsxSelected = new Set(parsed.map((_,i)=>i));
+    statusEl.innerHTML = `<span style="color:var(--accent);font-weight:600">✓ ${parsed.length} lançamento(s) lidos de "${filename}"</span>`;
+    renderXlsxResults();
+    $('xlsxResults').style.display = 'block';
+    setTimeout(()=>$('xlsxResults').scrollIntoView({behavior:'smooth'}), 200);
+
+  }catch(err){
+    statusEl.innerHTML = '<span style="color:var(--red)">Erro ao processar: '+err.message+'</span>';
+    console.error(err);
+  }
+}
+
+function guessCategoryFromHistory(desc){
+  const hist = buildHistory();
+  const dl = desc.toLowerCase();
+  let best = null, bestScore = 0;
+  for(const [key, h] of Object.entries(hist)){
+    const kl = key.toLowerCase();
+    // Check if description contains or starts with history key
+    const score = dl.startsWith(kl.slice(0,5)) ? 2 : (dl.includes(kl.slice(0,4)) ? 1 : 0);
+    if(score > bestScore){ bestScore = score; best = h.category; }
+  }
+  return best;
+}
+
+function renderXlsxResults(){
+  const comp = $('xlsxComp').value || '';
+  const existComp = userData.transactions.filter(t=>(t.competency||t.date.substr(0,7))===comp);
+  
+  function isDup(item){
+    return existComp.some(t=>Math.abs(t.value-item.value)<0.02 &&
+      t.desc.toLowerCase().slice(0,6)===item.desc.toLowerCase().slice(0,6));
+  }
+
+  const total = xlsxParsed.filter((_,i)=>xlsxSelected.has(i)).reduce((s,t)=>s+t.value,0);
+  $('xlsxResultsSub').textContent = `${xlsxSelected.size} de ${xlsxParsed.length} selecionados · Total: ${fmtBRL(total)}`;
+  $('xlsxTotalCheck').innerHTML = `
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Lançamentos</div>
+        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700">${xlsxParsed.length}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Total</div>
+        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--red)">${fmtBRL(total)}</div></div>
+      <div style="font-size:11px;color:var(--text3)">Competência: <b style="color:var(--accent)">${comp}</b></div>
     </div>`;
 
-  $('importResultsSub').textContent=`${importSelected.size} de ${importParsed.length} selecionados para importar`;
+  const catOpts = getCats().map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
 
-  const catOptions=getCats().map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
-
-  // Check for potential duplicates
-  function isDuplicate(item){
-    return existingThisComp.some(t=>
-      Math.abs(t.value-item.value)<0.02 &&
-      t.desc.toLowerCase().slice(0,6)===item.desc.toLowerCase().slice(0,6)
-    );
-  }
-
-  $('importItemsList').innerHTML=importParsed.map((item,i)=>{
-    const dup=isDuplicate(item);
-    const sel=importSelected.has(i);
-    const confColor=item.confidence==='high'?'var(--accent)':item.confidence==='medium'?'var(--yellow)':'var(--text3)';
-    return `<div class="import-item${dup?' import-item-dup':''}" id="irow-${i}">
-      <input type="checkbox" style="margin-top:3px;accent-color:var(--accent)" ${sel?'checked':''} ${dup?'':''}
-        onchange="toggleImportItem(${i},this.checked)">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+  $('xlsxItemsList').innerHTML = xlsxParsed.map((item,i)=>{
+    const dup = isDup(item);
+    const sel = xlsxSelected.has(i);
+    return `<div class="import-item${dup?' import-item-dup':''}" id="xrow-${i}" style="display:grid;grid-template-columns:20px 1fr auto;gap:10px;align-items:start;padding:12px 18px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" style="margin-top:3px;accent-color:var(--accent)" ${sel?'checked':''} onchange="toggleXlsxItem(${i},this.checked)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
         <div>
-          <input class="import-field" value="${item.desc}" oninput="importParsed[${i}].desc=this.value" style="margin-bottom:5px;font-weight:600">
-          <div style="display:flex;gap:6px">
-            <select class="import-field" style="flex:1" onchange="importParsed[${i}].category=this.value">
-              ${catOptions.replace(`value="${item.category}"`,`value="${item.category}" selected`)}
-            </select>
-            <select class="import-field" style="width:100px" onchange="importParsed[${i}].expenseType=this.value">
-              <option value="variable"${item.expenseType==='variable'?' selected':''}>Variável</option>
-              <option value="fixed"${item.expenseType==='fixed'?' selected':''}>Fixo</option>
-            </select>
-          </div>
+          <input class="import-field" value="${item.desc}" oninput="xlsxParsed[${i}].desc=this.value" style="margin-bottom:4px;font-weight:600">
+          <select class="import-field" onchange="xlsxParsed[${i}].category=this.value">
+            ${catOpts.replace(`value="${item.category}"`,`value="${item.category}" selected`)}
+          </select>
         </div>
         <div>
-          <input class="import-field" type="number" value="${item.value}" step="0.01" oninput="importParsed[${i}].value=parseFloat(this.value)||0;renderImportTotals()" style="margin-bottom:5px;font-weight:700;color:var(--red);text-align:right">
-          <div style="display:flex;gap:6px;align-items:center">
-            <input class="import-field" type="date" value="${item.date||''}" oninput="importParsed[${i}].date=this.value" style="flex:1">
-            <span style="font-size:10px;color:${confColor}" title="Confiança da IA">${item.confidence==='high'?'✓ Alta':item.confidence==='medium'?'~ Média':'? Baixa'}</span>
-          </div>
-          ${dup?'<div style="font-size:10px;color:var(--red);margin-top:4px">⚠ Possível duplicata!</div>':''}
-          ${item.is_installment?`<div style="font-size:10px;color:var(--accent5);margin-top:4px">📦 Parcela ${item.install_current}/${item.install_total}</div>`:''}
+          <input class="import-field" type="number" value="${item.value.toFixed(2)}" step="0.01" oninput="xlsxParsed[${i}].value=parseFloat(this.value)||0;updateXlsxTotal()" style="font-weight:700;color:var(--red);text-align:right;margin-bottom:4px">
+          <input class="import-field" type="date" value="${item.date}" oninput="xlsxParsed[${i}].date=this.value">
+        </div>
+        <div style="grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">
+          <select class="import-field" style="width:auto" onchange="xlsxParsed[${i}].expenseType=this.value">
+            <option value="variable"${item.expenseType==='variable'?' selected':''}>Variável</option>
+            <option value="fixed"${item.expenseType==='fixed'?' selected':''}>Fixo</option>
+          </select>
+          ${item.is_installment?`<span class="badge b-purple">📦 ${item.install_current}/${item.install_total}</span>`:''}
+          ${dup?'<span style="font-size:10px;color:var(--red)">⚠ Possível duplicata</span>':''}
         </div>
       </div>
-      <button class="btn-icon" onclick="toggleImportItem(${i},false);document.getElementById('irow-${i}').style.opacity='.3'" title="Remover">✕</button>
+      <button class="btn-icon" onclick="toggleXlsxItem(${i},false);document.getElementById('xrow-${i}').style.opacity='.35'" title="Remover">✕</button>
     </div>`;
   }).join('');
 }
 
-function renderImportTotals(){
-  const totalSelected=importParsed.filter((_,i)=>importSelected.has(i)).reduce((s,t)=>s+t.value,0);
-  $('importResultsSub').textContent=`${importSelected.size} de ${importParsed.length} selecionados · Total: ${fmtBRL(totalSelected)}`;
+function updateXlsxTotal(){
+  const total = xlsxParsed.filter((_,i)=>xlsxSelected.has(i)).reduce((s,t)=>s+t.value,0);
+  $('xlsxResultsSub').textContent = `${xlsxSelected.size} de ${xlsxParsed.length} selecionados · Total: ${fmtBRL(total)}`;
 }
 
-window.toggleImportItem=function(i,checked){
-  if(checked) importSelected.add(i); else importSelected.delete(i);
-  renderImportTotals();
+window.toggleXlsxItem = function(i, checked){
+  if(checked) xlsxSelected.add(i); else xlsxSelected.delete(i);
+  updateXlsxTotal();
+};
+window.xlsxSelectAll = function(){
+  xlsxParsed.forEach((_,i)=>xlsxSelected.add(i));
+  document.querySelectorAll('#xlsxItemsList input[type=checkbox]').forEach(c=>c.checked=true);
+  updateXlsxTotal();
 };
 
-window.importSelectAll=function(){
-  importParsed.forEach((_,i)=>importSelected.add(i));
-  document.querySelectorAll('#importItemsList input[type=checkbox]').forEach(c=>c.checked=true);
-  renderImportTotals();
-};
-
-window.confirmImport=async function(){
-  if(!importSelected.size){ toast('⚠️','Selecione ao menos um item.'); return; }
-  const comp=$('importComp').value;
-  const btn=$('importConfirmBtn');
+window.confirmXlsx = async function(){
+  if(!xlsxSelected.size){ toast('⚠️','Selecione ao menos um item.'); return; }
+  const comp = $('xlsxComp').value;
+  if(!comp){ toast('⚠️','Selecione o mês de competência.'); return; }
+  const btn = $('xlsxConfirmBtn');
   btn.disabled=true; btn.textContent='Salvando...';
-  let saved=0;
+  let saved = 0;
   try{
-    for(const i of importSelected){
-      const item=importParsed[i];
-      const tx={
-        desc:item.desc, value:item.value,
-        date:item.date||`${comp}-01`,
-        competency:comp,
-        category:item.category||'Classificar',
-        expenseType:item.expenseType||'variable',
-        payment:'card', status:'paid',
-        type:'expense', installment:!!item.is_installment,
+    for(const i of xlsxSelected){
+      const item = xlsxParsed[i];
+      const tx = {
+        desc: item.desc, value: item.value,
+        date: item.date, competency: comp,
+        category: item.category||'Classificar',
+        expenseType: item.expenseType||'variable',
+        payment:'card', status:'paid', type:'expense',
+        installment: !!item.is_installment,
         ...(item.is_installment?{installCurrent:item.install_current||1,installTotal:item.install_total||1}:{})
       };
-      const newId=await fsAddTx(tx);
+      const newId = await fsAddTx(tx);
       userData.transactions.push({id:newId,...tx});
       saved++;
     }
     renderAll();
     toast('✅',`${saved} lançamentos importados!`);
-    // Reset
-    window._importImages=[]; importImages=window._importImages;
-    importParsed=[]; importSelected.clear();
-    $('importResults').style.display='none';
-    $('importPreview').innerHTML='';
-  }catch(e){ toast('❌','Erro ao importar. Tente novamente.'); console.error(e); }
-  finally{ btn.disabled=false; btn.textContent='✓ Importar Selecionados'; }
+    xlsxParsed=[]; xlsxSelected.clear();
+    $('xlsxResults').style.display='none';
+    $('xlsxStatus').textContent='Nenhum arquivo selecionado';
+  }catch(e){
+    toast('❌','Erro ao importar: '+e.message);
+    console.error(e);
+  }finally{
+    btn.disabled=false; btn.textContent='✓ Importar';
+  }
 };
+
+window.processXlsx = function(){
+  const el = $('inp_xlsx');
+  if(!el || !el.files || !el.files.length){
+    toast('⚠️','Selecione um arquivo Excel primeiro.');
+    return;
+  }
+  readXlsxFile(el.files[0]);
+};
+
 
 // KEYBOARD
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeTxModal(); closeBudgetModal(); } });
@@ -2774,62 +2711,5 @@ window.deleteCat=async function(idx){
 };
 </script>
 
-<!-- SCRIPT SEPARADO (não module) para upload de arquivos -->
-<!-- Necessário porque type="module" tem escopo isolado que impede eventos inline -->
-<script>
-(function(){
-  function tryWire(){
-    var g=document.getElementById('inp_gallery');
-    var c=document.getElementById('inp_camera');
-    if(!g||!c){ setTimeout(tryWire,100); return; }
-    if(g._wired) return;
-    g._wired=true; c._wired=true;
-
-    function onFilesSelected(files){
-      if(!files||!files.length) return;
-      var fileArr=Array.from(files).filter(function(f){return f.type.startsWith('image/');});
-      if(!fileArr.length){ alert('Selecione imagens JPG ou PNG.'); return; }
-
-      var prev=document.getElementById('importPreview');
-      var statusEl=document.getElementById('importStatus');
-      var clearBtn=document.getElementById('importClearBtn');
-
-      // Access importImages from window scope (set by module)
-      if(!window._importImages) window._importImages=[];
-
-      fileArr.forEach(function(file){
-        var reader=new FileReader();
-        reader.onload=function(e){
-          window._importImages.push(e.target.result);
-
-          var thumb=document.createElement('div');
-          thumb.style.cssText='position:relative;width:90px;height:90px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.15);flex-shrink:0';
-          thumb.innerHTML='<img src="'+e.target.result+'" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);font-size:9px;color:#fff;text-align:center;padding:2px">'+Math.round(file.size/1024)+'KB</div>';
-          prev.appendChild(thumb);
-
-          statusEl.innerHTML='<span style="color:#5eead4;font-weight:600">✓ '+window._importImages.length+' imagem(ns) pronta(s) para processar</span>';
-          if(clearBtn) clearBtn.style.display='block';
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    g.addEventListener('change',function(){
-      if(this.files&&this.files.length) onFilesSelected(this.files);
-      this.value='';
-    });
-    c.addEventListener('change',function(){
-      if(this.files&&this.files.length) onFilesSelected(this.files);
-      this.value='';
-    });
-  }
-  // Try immediately and also after DOM ready
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', tryWire);
-  } else {
-    tryWire();
-  }
-})();
-</script>
 </body>
 </html>
