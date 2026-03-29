@@ -201,7 +201,26 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .inst-table td{padding:11px 16px;border-bottom:1px solid var(--border)}
 .inst-table tr:last-child td{border-bottom:none}
 .inst-table tr:hover td{background:var(--surface2)}
-/* TOAST */
+/* SHARED CASHFLOW */
+.shared-col-hdr{text-align:center;padding:14px 16px;border-radius:var(--radius) var(--radius) 0 0;font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
+.shared-col-me{background:linear-gradient(135deg,rgba(94,234,212,.15),rgba(94,234,212,.05));border:1px solid rgba(94,234,212,.25)}
+.shared-col-partner{background:linear-gradient(135deg,rgba(244,114,182,.15),rgba(244,114,182,.05));border:1px solid rgba(244,114,182,.25)}
+.shared-col-together{background:linear-gradient(135deg,rgba(167,139,250,.15),rgba(167,139,250,.05));border:1px solid rgba(167,139,250,.25)}
+.shared-stat{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border)}
+.shared-stat:last-child{border-bottom:none}
+.shared-stat-label{font-size:11px;color:var(--text3)}
+.shared-stat-val{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.invite-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:32px;text-align:center;margin-bottom:18px}
+.invite-box h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:8px}
+.invite-box p{color:var(--text2);font-size:13px;margin-bottom:20px;line-height:1.6}
+.pending-box{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25);border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.pending-box-label{font-size:13px;font-weight:500}
+.pending-box-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.connected-box{background:rgba(94,234,212,.07);border:1px solid rgba(94,234,212,.25);border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.cf-table tr.shared-me td:first-child{border-left:3px solid var(--accent)}
+.cf-table tr.shared-partner td:first-child{border-left:3px solid var(--accent2)}
+.cf-table tr.shared-together td{background:rgba(167,139,250,.06);font-weight:700}
+.cf-table tr.shared-together td:first-child{border-left:3px solid var(--accent5)}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:11px 17px;z-index:5000;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);transform:translateX(160%);transition:transform .3s ease}
 .toast.show{transform:translateX(0)}
 .ham-btn{display:none;position:fixed;top:14px;left:14px;z-index:200;background:var(--surface);border:1px solid var(--border2);border-radius:10px;width:42px;height:42px;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:var(--text);box-shadow:0 2px 12px rgba(0,0,0,.4)}
@@ -277,6 +296,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="nav-sec">Análise</div>
       <div class="nav-item" onclick="gotoPage('budget')"><span class="ni">🎯</span> Orçamento</div>
       <div class="nav-item" onclick="gotoPage('cashflow')"><span class="ni">📈</span> Fluxo de Caixa</div>
+      <div class="nav-item" onclick="gotoPage('shared')"><span class="ni">💑</span> Fluxo Compartilhado</div>
       <div class="nav-item" onclick="gotoPage('credit')"><span class="ni">💳</span> Cartão de Crédito</div>
     </div>
     <div class="sidebar-foot">
@@ -400,6 +420,36 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="cf-wrap"><table class="cf-table" id="cfTable"></table></div>
       </div>
     </div>
+    <!-- SHARED CASHFLOW -->
+    <div class="page" id="page-shared">
+      <div class="page-hdr">
+        <div><div class="page-title">Fluxo Compartilhado 💑</div><div class="page-sub" id="sharedSub">Visão consolidada do casal</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="sharedActions"></div>
+      </div>
+      <!-- CONNECTION STATUS -->
+      <div id="sharedConnect"></div>
+      <!-- SHARED CONTENT (shown when connected) -->
+      <div id="sharedContent" style="display:none">
+        <!-- YEAR SELECTOR -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap">
+          <select class="form-input" id="sharedYear" style="width:auto;padding:6px 12px;font-size:12px" onchange="renderShared()"></select>
+        </div>
+        <!-- 3 COLUMN SUMMARY CARDS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px" id="sharedCols">
+          <!-- filled by JS -->
+        </div>
+        <!-- CONSOLIDATED TABLE -->
+        <div class="sec-card">
+          <div class="sec-hdr"><div class="sec-title">Resumo Anual Consolidado</div></div>
+          <div class="cf-wrap"><table class="cf-table" id="sharedTable"></table></div>
+        </div>
+        <!-- CHART -->
+        <div class="chart-card" style="margin-top:0">
+          <div class="chart-title">Receitas vs Despesas — Eu, Parceiro(a) e Juntos</div>
+          <div class="chart-wrap" style="height:250px"><canvas id="sharedChart"></canvas></div>
+        </div>
+      </div>
+    </div>
     <!-- CREDIT -->
     <div class="page" id="page-credit">
       <div class="page-hdr"><div><div class="page-title">Cartão de Crédito</div><div class="page-sub">Fatura e limite do mês</div></div></div>
@@ -511,6 +561,23 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+// FIRESTORE RULES NEEDED (update in Firebase Console):
+// rules_version = '2';
+// service cloud.firestore {
+//   match /databases/{database}/documents {
+//     match /users/{userId}/{document=**} {
+//       allow read: if request.auth != null && (request.auth.uid == userId || exists(/databases/$(database)/documents/shared/$(request.auth.uid)));
+//       allow write: if request.auth != null && request.auth.uid == userId;
+//     }
+//     match /shared/{userId} {
+//       allow read, write: if request.auth != null;
+//     }
+//     match /email_index/{emailKey} {
+//       allow read: if request.auth != null;
+//       allow write: if request.auth != null;
+//     }
+//   }
+// }
 const fbApp = initializeApp({
   apiKey:"AIzaSyBJ7WQoxTRGEbAnsUkf_lKHQsFDYLQLfYY",
   authDomain:"financeflow-pro-6f64e.firebaseapp.com",
@@ -623,7 +690,9 @@ onAuthStateChanged(auth,async user=>{
     $('scAuth').classList.add('hidden'); $('scLoad').classList.remove('hidden'); $('scApp').style.display='none';
     $('loadMsg').textContent='Carregando seus dados...';
     try{
-      await loadUserData(); setupUI(); renderAll();
+      await loadUserData();
+      await registerEmailIndex();
+      setupUI(); renderAll();
       $('scLoad').classList.add('hidden'); $('scApp').style.display='flex';
     }catch(e){ console.error(e); $('loadMsg').textContent='Erro ao carregar. Recarregue a página.'; }
   }else{
@@ -659,7 +728,7 @@ window.gotoPage=function(name){
   if(name==='budget')renderBudget();
   if(name==='credit')renderCredit();
   if(name==='cashflow')renderCashflow();
-  if(name==='installments')renderInstallments();
+  if(name==='shared')renderSharedPage();
 };
 
 // TX MODAL
@@ -788,12 +857,12 @@ function renderDashboard(){
           legend:{
             position:'right',
             labels:{
-              color:'#7a84a0',font:{family:'DM Sans',size:10},boxWidth:10,padding:8,
+              color:'#eef0f8',font:{family:'DM Sans',size:11},boxWidth:10,padding:10,
               generateLabels(chart){
                 return chart.data.labels.map((lbl,i)=>{
                   const val=chart.data.datasets[0].data[i];
                   const pct=totalExp>0?((val/totalExp)*100).toFixed(1):0;
-                  return{text:`${lbl}  ${fmtBRL(val)} (${pct}%)`,fillStyle:chart.data.datasets[0].backgroundColor[i],hidden:false,index:i};
+                  return{text:`${lbl}  ${fmtBRL(val)} (${pct}%)`,fillStyle:chart.data.datasets[0].backgroundColor[i],fontColor:'#eef0f8',hidden:false,index:i};
                 });
               }
             }
@@ -819,12 +888,12 @@ function renderDashboard(){
         legend:{
           position:'right',
           labels:{
-            color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10,padding:10,
+            color:'#eef0f8',font:{family:'DM Sans',size:11},boxWidth:10,padding:10,
             generateLabels(chart){
               return chart.data.labels.map((lbl,i)=>{
                 const val=chart.data.datasets[0].data[i];
                 const pct=typeTotal>0?((val/typeTotal)*100).toFixed(1):0;
-                return{text:`${lbl}  ${fmtBRL(val)} (${pct}%)`,fillStyle:chart.data.datasets[0].backgroundColor[i],hidden:false,index:i};
+                return{text:`${lbl}  ${fmtBRL(val)} (${pct}%)`,fillStyle:chart.data.datasets[0].backgroundColor[i],fontColor:'#eef0f8',hidden:false,index:i};
               });
             }
           }
@@ -1037,7 +1106,290 @@ function renderAll(){
   if(active==='credit')renderCredit();
   if(active==='cashflow')renderCashflow();
   if(active==='installments')renderInstallments();
+  if(active==='shared')renderSharedPage();
 }
+
+// ============ SHARED CASHFLOW ============
+let sharedChartI=null;
+
+// Firestore helpers for sharing
+const sharedRef=()=>doc(db,'shared',curUser.uid);
+const partnerSharedRef=(uid)=>doc(db,'shared',uid);
+
+async function loadSharedStatus(){
+  const snap=await getDoc(sharedRef());
+  return snap.exists()?snap.data():null;
+}
+
+async function renderSharedPage(){
+  $('sharedContent').style.display='none';
+  $('sharedConnect').innerHTML=`<div style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 12px"></div><div style="color:var(--text2);font-size:13px">Verificando conexão...</div></div>`;
+  $('sharedActions').innerHTML='';
+
+  const status=await loadSharedStatus();
+
+  // Setup year selector
+  const years=[...new Set(userData.transactions.map(t=>new Date(t.date+'T00:00:00').getFullYear()).concat([curYear]))].sort();
+  const ySel=$('sharedYear');
+  if(!ySel.options.length){ ySel.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); ySel.value=curYear; }
+
+  if(!status || status.status==='none'){
+    // Not connected — show invite form
+    $('sharedConnect').innerHTML=`
+      <div class="invite-box">
+        <div style="font-size:40px;margin-bottom:12px">💑</div>
+        <h3>Compartilhe seu Fluxo de Caixa</h3>
+        <p>Envie um convite para seu parceiro(a).<br>Quando aceito, vocês terão uma visão consolidada juntos.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <input class="form-input" type="email" id="inviteEmail" placeholder="email do parceiro(a)" style="max-width:280px">
+          <button class="btn btn-primary" onclick="sendInvite()">Enviar Convite 💌</button>
+        </div>
+      </div>`;
+  } else if(status.status==='pending_sent'){
+    // Invite sent, waiting
+    $('sharedConnect').innerHTML=`
+      <div class="pending-box">
+        <div>
+          <div class="pending-box-label">⏳ Convite enviado para <strong>${status.partnerEmail}</strong></div>
+          <div class="pending-box-sub">Aguardando aceitação...</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="cancelInvite()">Cancelar</button>
+      </div>
+      <div class="invite-box" style="padding:20px">
+        <p style="margin:0;font-size:12px;color:var(--text3)">Peça para seu parceiro(a) acessar o app e aceitar o convite na tela "Fluxo Compartilhado".</p>
+      </div>`;
+  } else if(status.status==='pending_received'){
+    // Received invite
+    $('sharedConnect').innerHTML=`
+      <div class="pending-box" style="border-color:rgba(94,234,212,.3);background:rgba(94,234,212,.07)">
+        <div>
+          <div class="pending-box-label">💌 <strong>${status.partnerEmail}</strong> te enviou um convite!</div>
+          <div class="pending-box-sub">Aceite para ver o fluxo consolidado juntos</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="acceptInvite()">✓ Aceitar</button>
+          <button class="btn btn-danger btn-sm" onclick="rejectInvite()">✕ Recusar</button>
+        </div>
+      </div>`;
+  } else if(status.status==='connected'){
+    // Connected!
+    const partnerName=status.partnerName||status.partnerEmail;
+    $('sharedConnect').innerHTML=`
+      <div class="connected-box">
+        <div style="font-size:24px">💑</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">Conectado com <strong style="color:var(--accent2)">${partnerName}</strong></div>
+          <div style="font-size:11px;color:var(--text3)">Fluxo compartilhado ativo • dados atualizados em tempo real</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="disconnectPartner()">Desconectar</button>
+      </div>`;
+    $('sharedContent').style.display='block';
+    await renderShared(status);
+  }
+}
+
+window.sendInvite=async function(){
+  const email=$('inviteEmail').value.trim().toLowerCase();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('⚠️','E-mail inválido.'); return; }
+  if(email===curUser.email){ toast('⚠️','Não pode convidar a si mesmo.'); return; }
+  try{
+    // Find partner's UID by checking if they have a shared doc or by email index
+    // We store an email→uid index in 'email_index' collection
+    const idxSnap=await getDoc(doc(db,'email_index',email.replace(/\./g,'_')));
+    if(!idxSnap.exists()){ toast('❌','Usuário não encontrado. O parceiro(a) precisa ter uma conta no app.'); return; }
+    const partnerUid=idxSnap.data().uid;
+
+    // Send invite to partner
+    await setDoc(partnerSharedRef(partnerUid),{
+      status:'pending_received',
+      partnerUid:curUser.uid,
+      partnerEmail:curUser.email,
+      partnerName:curUser.displayName||curUser.email.split('@')[0]
+    });
+    // Save own status
+    await setDoc(sharedRef(),{
+      status:'pending_sent',
+      partnerUid,
+      partnerEmail:email,
+      partnerName:''
+    });
+    toast('💌','Convite enviado!');
+    renderSharedPage();
+  }catch(e){ toast('❌','Erro ao enviar convite.'); console.error(e); }
+};
+
+window.acceptInvite=async function(){
+  const status=await loadSharedStatus();
+  if(!status)return;
+  const partnerUid=status.partnerUid;
+  const myName=curUser.displayName||curUser.email.split('@')[0];
+  try{
+    // Update both sides to connected
+    await setDoc(sharedRef(),{status:'connected',partnerUid,partnerEmail:status.partnerEmail,partnerName:status.partnerName});
+    await setDoc(partnerSharedRef(partnerUid),{status:'connected',partnerUid:curUser.uid,partnerEmail:curUser.email,partnerName:myName});
+    toast('🎉','Conectado! Agora vocês têm um fluxo compartilhado.');
+    renderSharedPage();
+  }catch(e){ toast('❌','Erro ao aceitar.'); console.error(e); }
+};
+
+window.rejectInvite=async function(){
+  const status=await loadSharedStatus();
+  if(status?.partnerUid){ try{ await deleteDoc(partnerSharedRef(status.partnerUid)); }catch(e){} }
+  await setDoc(sharedRef(),{status:'none'});
+  toast('🗑️','Convite recusado.');
+  renderSharedPage();
+};
+
+window.cancelInvite=async function(){
+  const status=await loadSharedStatus();
+  if(status?.partnerUid){ try{ await deleteDoc(partnerSharedRef(status.partnerUid)); }catch(e){} }
+  await setDoc(sharedRef(),{status:'none'});
+  toast('🗑️','Convite cancelado.');
+  renderSharedPage();
+};
+
+window.disconnectPartner=async function(){
+  if(!confirm('Deseja desconectar o fluxo compartilhado?'))return;
+  const status=await loadSharedStatus();
+  if(status?.partnerUid){ try{ await setDoc(partnerSharedRef(status.partnerUid),{status:'none'}); }catch(e){} }
+  await setDoc(sharedRef(),{status:'none'});
+  $('sharedContent').style.display='none';
+  toast('🔌','Desconectado.');
+  renderSharedPage();
+};
+
+// Register user's email→uid when they first log in (needed for invite lookup)
+async function registerEmailIndex(){
+  const emailKey=curUser.email.replace(/\./g,'_');
+  try{ await setDoc(doc(db,'email_index',emailKey),{uid:curUser.uid,email:curUser.email},{merge:true}); }catch(e){}
+}
+
+async function renderShared(status){
+  const year=parseInt($('sharedYear').value)||curYear;
+  const partnerUid=status.partnerUid;
+  const partnerName=status.partnerName||status.partnerEmail;
+  const myName=curUser.displayName||curUser.email.split('@')[0];
+
+  // Load partner's transactions
+  let partnerTxs=[];
+  let partnerPatrimonio=0, partnerReserve=0;
+  try{
+    const pTxSnap=await getDocs(collection(db,'users',partnerUid,'transactions'));
+    pTxSnap.forEach(d=>partnerTxs.push({id:d.id,...d.data()}));
+    const pSettings=await getDoc(doc(db,'users',partnerUid));
+    if(pSettings.exists()){ partnerPatrimonio=pSettings.data().patrimonio||0; partnerReserve=pSettings.data().reserve||0; }
+  }catch(e){ toast('⚠️','Não foi possível carregar os dados do parceiro.'); }
+
+  const myTxs=userData.transactions;
+  const myPatrimonio=userData.patrimonio||0;
+  const myReserve=userData.reserve||0;
+
+  // Calculate summary for a set of transactions + year
+  function calcYear(txs,patrimIni,reserve){
+    const monthly=MONTHS_S.map((_,m)=>{
+      const mt=txs.filter(t=>{ const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===m&&dt.getFullYear()===year; });
+      const inc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+      const exp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+      const bal=inc-exp;
+      return{inc,exp,bal};
+    });
+    // Accumulate patrimônio
+    let pat=patrimIni;
+    const patriAcc=monthly.map(m=>{ pat+=m.bal-(m.inc>0||m.exp>0?reserve:0); return pat; });
+    const totInc=monthly.reduce((s,m)=>s+m.inc,0);
+    const totExp=monthly.reduce((s,m)=>s+m.exp,0);
+    return{monthly,patriAcc,totInc,totExp,totBal:totInc-totExp,finalPat:patriAcc[11]};
+  }
+
+  const me=calcYear(myTxs,myPatrimonio,myReserve);
+  const partner=calcYear(partnerTxs,partnerPatrimonio,partnerReserve);
+
+  // Combined
+  const together={
+    monthly:MONTHS_S.map((_,m)=>({
+      inc:me.monthly[m].inc+partner.monthly[m].inc,
+      exp:me.monthly[m].exp+partner.monthly[m].exp,
+      bal:me.monthly[m].bal+partner.monthly[m].bal
+    })),
+    totInc:me.totInc+partner.totInc,
+    totExp:me.totExp+partner.totExp,
+    totBal:me.totBal+partner.totBal,
+    finalPat:me.finalPat+partner.finalPat
+  };
+
+  // 3-column summary cards
+  function col(label,data,cls,accentColor){
+    return `<div style="border-radius:var(--radius);overflow:hidden">
+      <div class="shared-col-hdr ${cls}" style="color:${accentColor}">${label}</div>
+      <div class="sec-card" style="border-radius:0 0 var(--radius) var(--radius);margin:0">
+        <div class="shared-stat"><span class="shared-stat-label">💰 Receitas</span><span class="shared-stat-val pos">${fmtBRL(data.totInc)}</span></div>
+        <div class="shared-stat"><span class="shared-stat-label">💸 Despesas</span><span class="shared-stat-val neg">${fmtBRL(data.totExp)}</span></div>
+        <div class="shared-stat"><span class="shared-stat-label">📊 Saldo</span><span class="shared-stat-val" style="color:${data.totBal>=0?'var(--accent)':'var(--red)'}">${fmtBRL(data.totBal)}</span></div>
+        <div class="shared-stat"><span class="shared-stat-label">💎 Patrimônio</span><span class="shared-stat-val" style="color:${accentColor}">${fmtBRL(data.finalPat)}</span></div>
+      </div>
+    </div>`;
+  }
+  $('sharedCols').innerHTML=
+    col(`👤 ${myName}`,me,'shared-col-me','var(--accent)')+
+    col(`👤 ${partnerName}`,partner,'shared-col-partner','var(--accent2)')+
+    col('💑 Juntos',together,'shared-col-together','var(--accent5)');
+
+  // Table
+  const mkRow=(lbl,myCells,pCells,togCells,cls)=>`
+    <tr class="${cls||''}">
+      <td>${lbl}</td>
+      ${myCells.map(v=>`<td class="${v>0?'pos':v<0?'neg':''}" style="text-align:right;color:${v!==0?'':'var(--text3)'};">${v?fmtBRL(v):'—'}</td>`).join('')}
+      ${pCells.map(v=>`<td class="${v>0?'pos':v<0?'neg':''}" style="text-align:right;opacity:.8">${v?fmtBRL(v):'—'}</td>`).join('')}
+      ${togCells.map(v=>`<td class="${v>0?'pos':v<0?'neg':''}" style="text-align:right;font-weight:600">${v?fmtBRL(v):'—'}</td>`).join('')}
+    </tr>`;
+
+  const colGroup=`<colgroup>${['140px',...Array(12).fill('60px'),'80px','80px','80px'].map(w=>`<col style="width:${w}">`).join('')}</colgroup>`;
+  $('sharedTable').innerHTML=`${colGroup}
+    <thead><tr>
+      <th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}
+      <th style="color:var(--accent)">Eu</th>
+      <th style="color:var(--accent2)">${partnerName.split(' ')[0]}</th>
+      <th style="color:var(--accent5)">Juntos</th>
+    </tr></thead>
+    <tbody>
+      ${mkRow('Receitas',me.monthly.map(m=>m.inc),partner.monthly.map(m=>m.inc),together.monthly.map(m=>m.inc),'')}
+      ${mkRow('Despesas',me.monthly.map(m=>-m.exp),partner.monthly.map(m=>-m.exp),together.monthly.map(m=>-m.exp),'')}
+      ${mkRow('Saldo',me.monthly.map(m=>m.bal),partner.monthly.map(m=>m.bal),together.monthly.map(m=>m.bal),'subtotal')}
+      <tr class="patrimonio">
+        <td>💎 Patrimônio</td>
+        ${me.patriAcc.map(v=>`<td class="purple" style="text-align:right;font-size:10px">${fmtBRL(v)}</td>`).join('')}
+        <td class="pos" style="text-align:right">${fmtBRL(me.finalPat)}</td>
+        <td class="neg" style="text-align:right;color:var(--accent2)">${fmtBRL(partner.finalPat)}</td>
+        <td class="purple" style="text-align:right">${fmtBRL(together.finalPat)}</td>
+      </tr>
+    </tbody>`;
+
+  // Chart
+  if(sharedChartI)sharedChartI.destroy();
+  sharedChartI=new Chart($('sharedChart').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:MONTHS_S,
+      datasets:[
+        {label:`Receitas (Eu)`,data:me.monthly.map(m=>m.inc),backgroundColor:'rgba(94,234,212,.6)',borderRadius:3,stack:'me'},
+        {label:`Receitas (${partnerName.split(' ')[0]})`,data:partner.monthly.map(m=>m.inc),backgroundColor:'rgba(244,114,182,.6)',borderRadius:3,stack:'partner'},
+        {label:`Desp. (Eu)`,data:me.monthly.map(m=>-m.exp),backgroundColor:'rgba(94,234,212,.25)',borderRadius:3,stack:'me'},
+        {label:`Desp. (${partnerName.split(' ')[0]})`,data:partner.monthly.map(m=>-m.exp),backgroundColor:'rgba(244,114,182,.25)',borderRadius:3,stack:'partner'},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#eef0f8',font:{family:'DM Sans',size:10},boxWidth:10}}},
+      scales:{
+        x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},
+        y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+
+  $('sharedSub').textContent=`${myName} & ${partnerName} — ${year}`;
+}
+window.renderShared=async function(){ const s=await loadSharedStatus(); if(s?.status==='connected')await renderShared(s); };
 
 // TOAST
 window.toast=function(ico,msg){ $('toastIco').textContent=ico; $('toastMsg').textContent=msg; const t=$('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); };
