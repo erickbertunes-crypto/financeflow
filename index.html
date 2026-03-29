@@ -605,33 +605,62 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       </div>
 
       <!-- UPLOAD AREA -->
-      <div class="sec-card" style="margin-bottom:16px" id="importUploadCard">
+      <div class="sec-card" style="margin-bottom:16px">
         <div class="sec-hdr"><div class="sec-title">1. Selecionar imagem(ns) da fatura</div></div>
-        <div style="padding:20px">
-          <div id="importDropZone" style="border:2px dashed var(--border2);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s" onclick="$('importFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border2)'" ondrop="handleImportDrop(event)">
-            <div style="font-size:36px;margin-bottom:12px">📸</div>
-            <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px">Arraste prints aqui ou clique para selecionar</div>
-            <div style="font-size:12px;color:var(--text3)">Pode enviar vários prints de uma vez • JPG, PNG, WebP</div>
-            <input type="file" id="importFileInput" multiple accept="image/*" style="display:none" onchange="handleImportFiles(this.files)">
+        <div style="padding:16px 18px">
+
+          <!-- MOBILE-FRIENDLY BUTTONS -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:20px 12px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+              <input type="file" multiple accept="image/*" style="display:none" onchange="handleImportFiles(this.files)">
+              <span style="font-size:28px">🖼️</span>
+              <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700">Galeria / Arquivos</span>
+              <span style="font-size:10px;color:var(--text3)">Selecione prints salvos</span>
+            </label>
+            <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:20px 12px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+              <input type="file" multiple accept="image/*" capture="environment" style="display:none" onchange="handleImportFiles(this.files)">
+              <span style="font-size:28px">📷</span>
+              <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700">Câmera</span>
+              <span style="font-size:10px;color:var(--text3)">Fotografe agora</span>
+            </label>
           </div>
-          <div id="importPreview" style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"></div>
+
+          <!-- STATUS + PREVIEW -->
+          <div id="importStatus" style="font-size:13px;color:var(--text2);margin-bottom:10px;text-align:center">Nenhuma imagem selecionada</div>
+          <div id="importPreview" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"></div>
+
+          <!-- CLEAR BUTTON (hidden until images added) -->
+          <div id="importClearBtn" style="display:none;text-align:center;margin-top:12px">
+            <button class="btn btn-danger btn-sm" onclick="clearImportImages()">✕ Remover todas as imagens</button>
+          </div>
         </div>
       </div>
 
       <!-- COMPETENCY MONTH -->
-      <div class="sec-card" style="margin-bottom:16px" id="importCompCard">
+      <div class="sec-card" style="margin-bottom:16px">
         <div class="sec-hdr"><div class="sec-title">2. Mês de competência da fatura</div></div>
-        <div style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-          <input type="month" class="form-input" id="importComp" style="width:auto">
-          <div style="font-size:12px;color:var(--text3)">Ex: se é a fatura de abril/2026, selecione 2026-04</div>
+        <div style="padding:14px 18px">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px">
+            <input type="month" class="form-input" id="importComp" style="width:auto">
+            <div style="font-size:12px;color:var(--text3)">Ex: se é a fatura de abril/2026, selecione 2026-04</div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:8px;padding:8px 12px">
+            💡 <strong>Dica:</strong> Se sua fatura fecha dia 28 de março, o mês de competência é <strong>abril</strong> (próxima fatura).
+          </div>
         </div>
       </div>
 
       <!-- PROCESS BUTTON -->
-      <div style="margin-bottom:18px" id="importProcessArea">
+      <div style="margin-bottom:18px">
         <button class="btn btn-primary" id="importBtn" onclick="processInvoice()" style="width:100%;padding:14px;font-size:15px">
           🤖 Processar com IA e Categorizar
         </button>
+        <div id="importProgress" style="display:none;margin-top:12px">
+          <div style="height:4px;background:var(--surface3);border-radius:2px;overflow:hidden">
+            <div id="importProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width .5s ease;border-radius:2px"></div>
+          </div>
+          <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:6px" id="importProgressText">Analisando imagens...</div>
+        </div>
       </div>
 
       <!-- RESULTS -->
@@ -639,17 +668,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="sec-card" style="margin-bottom:16px">
           <div class="sec-hdr">
             <div>
-              <div class="sec-title">3. Revisar e Confirmar Lançamentos</div>
+              <div class="sec-title">3. Revisar e Confirmar</div>
               <div style="font-size:11px;color:var(--text3);margin-top:2px" id="importResultsSub"></div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-ghost btn-sm" onclick="importSelectAll()">Selecionar todos</button>
-              <button class="btn btn-primary" id="importConfirmBtn" onclick="confirmImport()">✓ Importar Selecionados</button>
+              <button class="btn btn-ghost btn-sm" onclick="importSelectAll()">Sel. todos</button>
+              <button class="btn btn-primary" id="importConfirmBtn" onclick="confirmImport()">✓ Importar</button>
             </div>
           </div>
-          <!-- TOTAL CHECK -->
-          <div id="importTotalCheck" style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;align-items:center"></div>
-          <!-- ITEMS LIST -->
+          <div id="importTotalCheck" style="padding:12px 18px;border-bottom:1px solid var(--border)"></div>
           <div id="importItemsList"></div>
         </div>
       </div>
@@ -2279,34 +2306,55 @@ let importSelected=new Set();
 
 function renderImportPage(){
   const now=new Date();
-  const yy=now.getFullYear(), mm=String(now.getMonth()+2>12?1:now.getMonth()+2).padStart(2,'0');
-  const compYear=now.getMonth()+2>12?yy+1:yy;
-  if(!$('importComp').value) $('importComp').value=`${compYear}-${mm}`;
+  // Default competency = next month
+  const nextMonth=new Date(now.getFullYear(), now.getMonth()+1, 1);
+  const yy=nextMonth.getFullYear(), mm=String(nextMonth.getMonth()+1).padStart(2,'0');
+  if(!$('importComp').value) $('importComp').value=`${yy}-${mm}`;
   importImages=[]; importParsed=[]; importSelected.clear();
   $('importPreview').innerHTML='';
+  $('importStatus').textContent='Nenhuma imagem selecionada';
+  $('importClearBtn').style.display='none';
   $('importResults').style.display='none';
+  $('importProgress').style.display='none';
 }
+
+window.clearImportImages=function(){
+  importImages=[];
+  $('importPreview').innerHTML='';
+  $('importStatus').textContent='Nenhuma imagem selecionada';
+  $('importClearBtn').style.display='none';
+};
 
 window.handleImportDrop=function(e){
   e.preventDefault();
-  $('importDropZone').style.borderColor='var(--border2)';
   handleImportFiles(e.dataTransfer.files);
 };
 
 window.handleImportFiles=function(files){
   const fileArr=Array.from(files).filter(f=>f.type.startsWith('image/'));
-  if(!fileArr.length){ toast('⚠️','Selecione imagens JPG ou PNG.'); return; }
+  if(!fileArr.length){ toast('⚠️','Selecione imagens JPG, PNG ou WebP.'); return; }
   const prev=$('importPreview');
+
+  let loaded=0;
   fileArr.forEach(file=>{
     const reader=new FileReader();
     reader.onload=e=>{
       const b64=e.target.result;
       importImages.push(b64);
-      const img=document.createElement('div');
-      img.style.cssText='position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--border2)';
-      img.innerHTML=`<img src="${b64}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);font-size:9px;color:#fff;text-align:center;padding:2px">${(file.size/1024).toFixed(0)}KB</div>`;
-      prev.appendChild(img);
+      loaded++;
+
+      // Thumbnail
+      const thumb=document.createElement('div');
+      thumb.style.cssText='position:relative;width:90px;height:90px;border-radius:10px;overflow:hidden;border:1px solid var(--border2);flex-shrink:0';
+      thumb.innerHTML=`<img src="${b64}" style="width:100%;height:100%;object-fit:cover">
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);font-size:9px;color:#fff;text-align:center;padding:2px">${(file.size/1024).toFixed(0)}KB</div>`;
+      prev.appendChild(thumb);
+
+      // Update status
+      $('importStatus').innerHTML=`<span style="color:var(--accent);font-weight:600">✓ ${importImages.length} imagem(ns) pronta(s) para processar</span>`;
+      $('importClearBtn').style.display='block';
     };
+    reader.onerror=()=>toast('❌',`Erro ao ler ${file.name}`);
     reader.readAsDataURL(file);
   });
   toast('✅',`${fileArr.length} imagem(ns) carregada(s)!`);
@@ -2319,6 +2367,19 @@ window.processInvoice=async function(){
 
   const btn=$('importBtn');
   btn.disabled=true; btn.textContent='🤖 Analisando imagens...';
+  $('importProgress').style.display='block';
+  $('importProgressBar').style.width='10%';
+  $('importProgressText').textContent='Enviando imagens para a IA...';
+
+  // Animate progress
+  let prog=10;
+  const progInterval=setInterval(()=>{
+    prog=Math.min(prog+5, 85);
+    $('importProgressBar').style.width=prog+'%';
+    if(prog<30) $('importProgressText').textContent='Enviando imagens...';
+    else if(prog<60) $('importProgressText').textContent='Lendo lançamentos...';
+    else $('importProgressText').textContent='Categorizando com histórico...';
+  },800);
 
   try{
     // Build history context for AI
@@ -2392,6 +2453,9 @@ Responda APENAS em JSON válido, sem markdown, sem texto extra:
     toast('❌','Erro ao chamar IA. Verifique sua conexão.');
     console.error(e);
   }finally{
+    clearInterval(progInterval);
+    $('importProgressBar').style.width='100%';
+    setTimeout(()=>{ $('importProgress').style.display='none'; $('importProgressBar').style.width='0%'; },500);
     btn.disabled=false; btn.textContent='🤖 Processar com IA e Categorizar';
   }
 };
