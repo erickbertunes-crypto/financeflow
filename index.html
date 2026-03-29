@@ -604,73 +604,56 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div><div class="page-title">Importar Fatura 📸</div><div class="page-sub">Fotografe sua fatura — a IA categoriza automaticamente</div></div>
       </div>
 
-      <!-- UPLOAD AREA -->
       <div class="sec-card" style="margin-bottom:16px">
-        <div class="sec-hdr"><div class="sec-title">1. Selecionar imagem(ns) da fatura</div></div>
+        <div class="sec-hdr"><div class="sec-title">1. Adicionar fotos da fatura</div></div>
         <div style="padding:16px 18px">
-
-          <!-- MOBILE-FRIENDLY BUTTONS -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-            <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:20px 12px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
-              <input type="file" multiple accept="image/*" style="display:none" onchange="handleImportFiles(this.files)">
-              <span style="font-size:28px">🖼️</span>
-              <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700">Galeria / Arquivos</span>
-              <span style="font-size:10px;color:var(--text3)">Selecione prints salvos</span>
-            </label>
-            <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:20px 12px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
-              <input type="file" multiple accept="image/*" capture="environment" style="display:none" onchange="handleImportFiles(this.files)">
-              <span style="font-size:28px">📷</span>
-              <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700">Câmera</span>
-              <span style="font-size:10px;color:var(--text3)">Fotografe agora</span>
-            </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <button id="btnGallery" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:2px solid var(--border2);border-radius:12px;padding:22px 12px;cursor:pointer;font-family:\'DM Sans\',sans-serif;color:var(--text);transition:border-color .2s">
+              <span style="font-size:32px">🖼️</span>
+              <span style="font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700">Galeria</span>
+              <span style="font-size:10px;color:var(--text3)">Selecionar prints</span>
+            </button>
+            <button id="btnCamera" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:2px solid var(--border2);border-radius:12px;padding:22px 12px;cursor:pointer;font-family:\'DM Sans\',sans-serif;color:var(--text);transition:border-color .2s">
+              <span style="font-size:32px">📷</span>
+              <span style="font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700">Câmera</span>
+              <span style="font-size:10px;color:var(--text3)">Fotografar agora</span>
+            </button>
           </div>
-
-          <!-- STATUS + PREVIEW -->
-          <div id="importStatus" style="font-size:13px;color:var(--text2);margin-bottom:10px;text-align:center">Nenhuma imagem selecionada</div>
-          <div id="importPreview" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"></div>
-
-          <!-- CLEAR BUTTON (hidden until images added) -->
+          <div id="importStatus" style="font-size:13px;color:var(--text2);text-align:center;padding:6px;min-height:22px">Nenhuma imagem selecionada</div>
+          <div id="importPreview" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px"></div>
           <div id="importClearBtn" style="display:none;text-align:center;margin-top:12px">
-            <button class="btn btn-danger btn-sm" onclick="clearImportImages()">✕ Remover todas as imagens</button>
+            <button class="btn btn-danger btn-sm" onclick="clearImportImages()">✕ Remover todas</button>
           </div>
         </div>
       </div>
 
-      <!-- COMPETENCY MONTH -->
       <div class="sec-card" style="margin-bottom:16px">
         <div class="sec-hdr"><div class="sec-title">2. Mês de competência da fatura</div></div>
         <div style="padding:14px 18px">
           <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px">
             <input type="month" class="form-input" id="importComp" style="width:auto">
-            <div style="font-size:12px;color:var(--text3)">Ex: se é a fatura de abril/2026, selecione 2026-04</div>
+            <div style="font-size:12px;color:var(--text3)">= mês em que a fatura será paga</div>
           </div>
           <div style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:8px;padding:8px 12px">
-            💡 <strong>Dica:</strong> Se sua fatura fecha dia 28 de março, o mês de competência é <strong>abril</strong> (próxima fatura).
+            💡 Fatura que fecha em março e vence em abril → selecione <strong>abril/2026</strong>
           </div>
         </div>
       </div>
 
-      <!-- PROCESS BUTTON -->
       <div style="margin-bottom:18px">
-        <button class="btn btn-primary" id="importBtn" onclick="processInvoice()" style="width:100%;padding:14px;font-size:15px">
-          🤖 Processar com IA e Categorizar
-        </button>
+        <button class="btn btn-primary" id="importBtn" onclick="processInvoice()" style="width:100%;padding:14px;font-size:15px">🤖 Processar com IA e Categorizar</button>
         <div id="importProgress" style="display:none;margin-top:12px">
-          <div style="height:4px;background:var(--surface3);border-radius:2px;overflow:hidden">
-            <div id="importProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width .5s ease;border-radius:2px"></div>
+          <div style="height:5px;background:var(--surface3);border-radius:3px;overflow:hidden">
+            <div id="importProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width .6s ease;border-radius:3px"></div>
           </div>
-          <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:6px" id="importProgressText">Analisando imagens...</div>
+          <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:6px" id="importProgressText">Analisando...</div>
         </div>
       </div>
 
-      <!-- RESULTS -->
       <div id="importResults" style="display:none">
         <div class="sec-card" style="margin-bottom:16px">
           <div class="sec-hdr">
-            <div>
-              <div class="sec-title">3. Revisar e Confirmar</div>
-              <div style="font-size:11px;color:var(--text3);margin-top:2px" id="importResultsSub"></div>
-            </div>
+            <div><div class="sec-title">3. Revisar e Confirmar</div><div style="font-size:11px;color:var(--text3);margin-top:2px" id="importResultsSub"></div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button class="btn btn-ghost btn-sm" onclick="importSelectAll()">Sel. todos</button>
               <button class="btn btn-primary" id="importConfirmBtn" onclick="confirmImport()">✓ Importar</button>
@@ -681,7 +664,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         </div>
       </div>
     </div>
-
     <!-- CREDIT -->
     <div class="page" id="page-credit">
       <div class="page-hdr"><div><div class="page-title">Cartão de Crédito</div><div class="page-sub">Fatura e limite do mês</div></div></div>
@@ -2305,17 +2287,37 @@ let importParsed=[]; // parsed items from AI
 let importSelected=new Set();
 
 function renderImportPage(){
-  const now=new Date();
-  // Default competency = next month
-  const nextMonth=new Date(now.getFullYear(), now.getMonth()+1, 1);
-  const yy=nextMonth.getFullYear(), mm=String(nextMonth.getMonth()+1).padStart(2,'0');
-  if(!$('importComp').value) $('importComp').value=`${yy}-${mm}`;
-  importImages=[]; importParsed=[]; importSelected.clear();
-  $('importPreview').innerHTML='';
-  $('importStatus').textContent='Nenhuma imagem selecionada';
-  $('importClearBtn').style.display='none';
-  $('importResults').style.display='none';
-  $('importProgress').style.display='none';
+  // Set default competency (next month) only if not set
+  if(!$('importComp').value){
+    const now=new Date();
+    const nm=new Date(now.getFullYear(),now.getMonth()+1,1);
+    $('importComp').value=nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0');
+  }
+  // DON'T reset images — only setup buttons
+  setupImportButtons();
+}
+
+function setupImportButtons(){
+  const bg=$('btnGallery'), bc=$('btnCamera');
+  if(!bg||!bc) return;
+  // Clone to remove old listeners
+  const ng=bg.cloneNode(true), nc=bc.cloneNode(true);
+  bg.parentNode.replaceChild(ng,bg);
+  bc.parentNode.replaceChild(nc,bc);
+  function makeInput(capture){
+    const inp=document.createElement('input');
+    inp.type='file'; inp.multiple=true; inp.accept='image/*';
+    if(capture) inp.setAttribute('capture','environment');
+    inp.style.cssText='position:fixed;top:-9999px;opacity:0';
+    inp.onchange=function(){
+      if(inp.files&&inp.files.length) handleImportFiles(inp.files);
+      setTimeout(()=>{ try{document.body.removeChild(inp);}catch(e){} },1000);
+    };
+    document.body.appendChild(inp);
+    return inp;
+  }
+  ng.addEventListener('click',()=>makeInput(false).click());
+  nc.addEventListener('click',()=>makeInput(true).click());
 }
 
 window.clearImportImages=function(){
