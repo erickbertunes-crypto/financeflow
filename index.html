@@ -607,18 +607,28 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="sec-card" style="margin-bottom:16px">
         <div class="sec-hdr"><div class="sec-title">1. Adicionar fotos da fatura</div></div>
         <div style="padding:16px 18px">
+
+          <!-- STATIC inputs outside any JS manipulation — most reliable on mobile -->
+          <input id="inp_gallery" type="file" multiple accept="image/*"
+            style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"
+            onchange="handleImportFiles(this.files)">
+          <input id="inp_camera" type="file" accept="image/*" capture="environment"
+            style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"
+            onchange="handleImportFiles(this.files)">
+
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-            <button id="btnGallery" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:2px solid var(--border2);border-radius:12px;padding:22px 12px;cursor:pointer;font-family:\'DM Sans\',sans-serif;color:var(--text);transition:border-color .2s">
+            <label for="inp_gallery" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:2px solid var(--border2);border-radius:12px;padding:22px 12px;cursor:pointer;text-align:center;transition:border-color .2s;user-select:none" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
               <span style="font-size:32px">🖼️</span>
-              <span style="font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700">Galeria</span>
-              <span style="font-size:10px;color:var(--text3)">Selecionar prints</span>
-            </button>
-            <button id="btnCamera" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:2px solid var(--border2);border-radius:12px;padding:22px 12px;cursor:pointer;font-family:\'DM Sans\',sans-serif;color:var(--text);transition:border-color .2s">
+              <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Galeria</span>
+              <span style="font-size:10px;color:var(--text3)">Selecionar prints salvos</span>
+            </label>
+            <label for="inp_camera" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:2px solid var(--border2);border-radius:12px;padding:22px 12px;cursor:pointer;text-align:center;transition:border-color .2s;user-select:none" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
               <span style="font-size:32px">📷</span>
-              <span style="font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700">Câmera</span>
+              <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Câmera</span>
               <span style="font-size:10px;color:var(--text3)">Fotografar agora</span>
-            </button>
+            </label>
           </div>
+
           <div id="importStatus" style="font-size:13px;color:var(--text2);text-align:center;padding:6px;min-height:22px">Nenhuma imagem selecionada</div>
           <div id="importPreview" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px"></div>
           <div id="importClearBtn" style="display:none;text-align:center;margin-top:12px">
@@ -2287,37 +2297,14 @@ let importParsed=[]; // parsed items from AI
 let importSelected=new Set();
 
 function renderImportPage(){
-  // Set default competency (next month) only if not set
   if(!$('importComp').value){
-    const now=new Date();
-    const nm=new Date(now.getFullYear(),now.getMonth()+1,1);
+    const nm=new Date(new Date().getFullYear(),new Date().getMonth()+1,1);
     $('importComp').value=nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0');
   }
-  // DON'T reset images — only setup buttons
-  setupImportButtons();
-}
-
-function setupImportButtons(){
-  const bg=$('btnGallery'), bc=$('btnCamera');
-  if(!bg||!bc) return;
-  // Clone to remove old listeners
-  const ng=bg.cloneNode(true), nc=bc.cloneNode(true);
-  bg.parentNode.replaceChild(ng,bg);
-  bc.parentNode.replaceChild(nc,bc);
-  function makeInput(capture){
-    const inp=document.createElement('input');
-    inp.type='file'; inp.multiple=true; inp.accept='image/*';
-    if(capture) inp.setAttribute('capture','environment');
-    inp.style.cssText='position:fixed;top:-9999px;opacity:0';
-    inp.onchange=function(){
-      if(inp.files&&inp.files.length) handleImportFiles(inp.files);
-      setTimeout(()=>{ try{document.body.removeChild(inp);}catch(e){} },1000);
-    };
-    document.body.appendChild(inp);
-    return inp;
-  }
-  ng.addEventListener('click',()=>makeInput(false).click());
-  nc.addEventListener('click',()=>makeInput(true).click());
+  // Reset the gallery/camera inputs so same files can be selected again
+  const gi=$('inp_gallery'), ci=$('inp_camera');
+  if(gi) gi.value='';
+  if(ci) ci.value='';
 }
 
 window.clearImportImages=function(){
@@ -2325,6 +2312,9 @@ window.clearImportImages=function(){
   $('importPreview').innerHTML='';
   $('importStatus').textContent='Nenhuma imagem selecionada';
   $('importClearBtn').style.display='none';
+  const gi=$('inp_gallery'), ci=$('inp_camera');
+  if(gi) gi.value='';
+  if(ci) ci.value='';
 };
 
 window.handleImportDrop=function(e){
