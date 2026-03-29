@@ -202,9 +202,17 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* TOAST */
 .toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:11px 17px;z-index:5000;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);transform:translateX(160%);transition:transform .3s ease}
 .toast.show{transform:translateX(0)}
-/* RESPONSIVE */
+.ham-btn{display:none;position:fixed;top:14px;left:14px;z-index:200;background:var(--surface);border:1px solid var(--border2);border-radius:10px;width:42px;height:42px;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:var(--text);box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;backdrop-filter:blur(3px)}
+.sidebar-overlay.show{display:block}
 @media(max-width:1200px){.cg4{grid-template-columns:repeat(2,1fr)}.budget-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:900px){.charts2{grid-template-columns:1fr}.sidebar{transform:translateX(-100%)}.main{margin-left:0;padding:16px 14px 48px}}
+@media(max-width:900px){
+  .charts2{grid-template-columns:1fr}
+  .sidebar{transform:translateX(-100%);transition:transform .28s ease;z-index:150}
+  .sidebar.open{transform:translateX(0)}
+  .ham-btn{display:flex}
+  .main{margin-left:0;padding:62px 14px 48px}
+}
 @media(max-width:640px){.cg4,.cg3{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -247,7 +255,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 <!-- APP -->
 <div class="app-wrap" id="scApp" style="display:none">
-  <nav class="sidebar">
+<button class="ham-btn" id="hamBtn" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sideOverlay" onclick="closeSidebar()"></div>
+  <nav class="sidebar" id="sidebar">
     <div class="logo">
       <div class="logo-wrap">
         <div class="logo-icon">💚</div>
@@ -357,7 +367,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="page" id="page-cashflow">
       <div class="page-hdr">
         <div><div class="page-title">Fluxo de Caixa</div><div class="page-sub">Entradas e saídas por mês</div></div>
-        <select class="form-input" id="cfYear" style="width:auto;padding:6px 12px;font-size:12px" onchange="renderCashflow()"></select>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 12px">
+            <span style="font-size:11px;color:var(--text3);white-space:nowrap">🏦 Meta Reserva/mês</span>
+            <input type="number" id="cfReserve" placeholder="0,00" step="0.01" min="0" oninput="saveReserve()" style="background:transparent;border:none;outline:none;color:var(--accent);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;width:100px">
+          </div>
+          <select class="form-input" id="cfYear" style="width:auto;padding:6px 12px;font-size:12px" onchange="renderCashflow()"></select>
+        </div>
       </div>
       <div class="charts2" style="grid-template-columns:1fr">
         <div class="chart-card"><div class="chart-title">Receitas vs Despesas</div><div class="chart-wrap" style="height:230px"><canvas id="flowChart"></canvas></div></div>
@@ -521,12 +537,12 @@ const txCol  =()=>collection(db,'users',curUser.uid,'transactions');
 
 async function loadUserData(){
   const snap=await getDoc(userRef());
-  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; }
+  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; }
   const txSnap=await getDocs(txCol());
   userData.transactions=[];
   txSnap.forEach(d=>userData.transactions.push({id:d.id,...d.data()}));
 }
-async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit},{merge:true}); }
+async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0},{merge:true}); }
 async function fsAddTx(tx){ const{id,...data}=tx; const ref=await addDoc(txCol(),{...data,createdAt:serverTimestamp()}); return ref.id; }
 async function fsUpdateTx(id,data){ await setDoc(doc(db,'users',curUser.uid,'transactions',id),data,{merge:true}); }
 async function fsDeleteTx(id){ await deleteDoc(doc(db,'users',curUser.uid,'transactions',id)); }
@@ -545,8 +561,17 @@ window.doLogin=async function(){
   const btn=$('btnLogin'); btn.disabled=true; btn.textContent='Entrando...';
   try{ await signInWithEmailAndPassword(auth,email,pass); }
   catch(e){
-    const m={'auth/invalid-credential':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail não cadastrado.','auth/wrong-password':'Senha incorreta.','auth/invalid-email':'E-mail inválido.','auth/too-many-requests':'Muitas tentativas. Aguarde.'};
-    showAuthErr(m[e.code]||'Erro ao entrar. Verifique seus dados.');
+    const m={
+      'auth/invalid-credential':'E-mail ou senha incorretos.',
+      'auth/user-not-found':'E-mail não cadastrado.',
+      'auth/wrong-password':'Senha incorreta.',
+      'auth/invalid-email':'E-mail inválido.',
+      'auth/too-many-requests':'Muitas tentativas. Aguarde.',
+      'auth/network-request-failed':'Sem conexão com a internet.',
+      'auth/operation-not-allowed':'Login por e-mail não está ativado no Firebase.',
+    };
+    showAuthErr(m[e.code]||`Erro (${e.code||e.message}). Pressione F12 para detalhes.`);
+    console.error('Firebase Auth Error:', e.code, e.message, e);
   }finally{ btn.disabled=false; btn.textContent='Entrar na conta'; }
 };
 
@@ -557,7 +582,19 @@ window.doRegister=async function(){
   if(pass!==pass2){ showAuthErr('As senhas não conferem.'); return; }
   const btn=$('btnReg'); btn.disabled=true; btn.textContent='Criando conta...';
   try{ const c=await createUserWithEmailAndPassword(auth,email,pass); await updateProfile(c.user,{displayName:name}); }
-  catch(e){ const m={'auth/email-already-in-use':'Este e-mail já está cadastrado.','auth/invalid-email':'E-mail inválido.','auth/weak-password':'Senha muito fraca.'}; showAuthErr(m[e.code]||'Erro ao criar conta.'); }
+  catch(e){
+    const m={
+      'auth/email-already-in-use':'Este e-mail já está cadastrado.',
+      'auth/invalid-email':'E-mail inválido.',
+      'auth/weak-password':'Senha muito fraca (mínimo 6 caracteres).',
+      'auth/network-request-failed':'Sem conexão com a internet. Verifique sua rede.',
+      'auth/operation-not-allowed':'Autenticação por e-mail não está ativada no Firebase. Vá em Authentication → Sign-in method → E-mail/senha e ative.',
+      'auth/configuration-not-found':'Configuração do Firebase não encontrada. Verifique o authDomain.',
+    };
+    const msg = m[e.code] || `Erro (${e.code||e.message}). Abra o Console do navegador (F12) para mais detalhes.`;
+    showAuthErr(msg);
+    console.error('Firebase Auth Error:', e.code, e.message, e);
+  }
   finally{ btn.disabled=false; btn.textContent='Criar conta gratuita'; }
 };
 
@@ -585,6 +622,7 @@ function setupUI(){
   updateMonthLabel();
   const years=[...new Set(userData.transactions.map(t=>new Date(t.date+'T00:00:00').getFullYear()).concat([curYear]))].sort();
   $('cfYear').innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); $('cfYear').value=curYear;
+  if(userData.reserve>0) $('cfReserve').value=userData.reserve;
 }
 
 // MONTH NAV
@@ -598,6 +636,7 @@ window.gotoPage=function(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('page-'+name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>{ if(n.getAttribute('onclick')?.includes(name))n.classList.add('active'); });
+  closeSidebar();
   if(name==='transactions')renderTxPage();
   if(name==='budget')renderBudget();
   if(name==='credit')renderCredit();
@@ -754,15 +793,41 @@ function renderBudget(){
 }
 
 // CASHFLOW
+window.saveReserve=async function(){
+  const v=parseFloat($('cfReserve').value)||0;
+  userData.reserve=v; await saveSettings(); renderCashflow();
+};
 function renderCashflow(){
   const year=parseInt($('cfYear').value)||curYear;
-  const monthly=MONTHS_S.map((_,m)=>{ const txs=userData.transactions.filter(t=>{ const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===m&&dt.getFullYear()===year; }); const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0); const fi=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0); const va=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0); return{inc,fi,va,tot:fi+va,bal:inc-fi-va}; });
-  const tot=monthly.reduce((a,m)=>({inc:a.inc+m.inc,fi:a.fi+m.fi,va:a.va+m.va,tot:a.tot+m.tot,bal:a.bal+m.bal}),{inc:0,fi:0,va:0,tot:0,bal:0});
-  const row=(lbl,vals,bold)=>`<tr${bold?' class="subtotal"':''}><td style="${bold?'font-weight:700':''}">${lbl}</td>${vals.map(v=>`<td class="${v<0?'neg':v>0?'pos':''}" style="text-align:right">${v===0?'—':fmtBRL(Math.abs(v))}</td>`).join('')}</tr>`;
-  $('cfTable').innerHTML=`<thead><tr><th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}<th>Total</th></tr></thead><tbody>${row('Receitas',[...monthly.map(m=>m.inc),tot.inc],false)}${row('↳ Desp. Fixas',[...monthly.map(m=>-m.fi),-tot.fi],false)}${row('↳ Desp. Variáveis',[...monthly.map(m=>-m.va),-tot.va],false)}${row('Total Despesas',[...monthly.map(m=>-m.tot),-tot.tot],true)}${row('Saldo',[...monthly.map(m=>m.bal),tot.bal],true)}</tbody>`;
+  const reserve=parseFloat($('cfReserve')?.value)||userData.reserve||0;
+  const monthly=MONTHS_S.map((_,m)=>{ const txs=userData.transactions.filter(t=>{ const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===m&&dt.getFullYear()===year; }); const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0); const fi=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0); const va=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0); const tot=fi+va; const bal=inc-tot; const balAfterReserve=bal-reserve; return{inc,fi,va,tot,bal,reserve,balAfterReserve}; });
+  const tot=monthly.reduce((a,m)=>({inc:a.inc+m.inc,fi:a.fi+m.fi,va:a.va+m.va,tot:a.tot+m.tot,bal:a.bal+m.bal,reserve:a.reserve+m.reserve,balAfterReserve:a.balAfterReserve+m.balAfterReserve}),{inc:0,fi:0,va:0,tot:0,bal:0,reserve:0,balAfterReserve:0});
+
+  const row=(lbl,vals,bold,colored)=>{
+    const cls=bold?'subtotal':'';
+    return `<tr${cls?' class="'+cls+'"':''}><td style="${bold?'font-weight:700':''}">${lbl}</td>${vals.map(v=>{
+      const c=colored==='auto'?(v<0?'neg':v>0?'pos':''):(colored||'');
+      return `<td class="${c}" style="text-align:right">${v===0?'—':fmtBRL(Math.abs(v))}</td>`;
+    }).join('')}</tr>`;
+  };
+
+  $('cfTable').innerHTML=`<thead><tr><th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}<th>Total</th></tr></thead><tbody>
+    ${row('Receitas',[...monthly.map(m=>m.inc),tot.inc],false,'pos')}
+    ${row('↳ Desp. Fixas',[...monthly.map(m=>-m.fi),-tot.fi],false,'neg')}
+    ${row('↳ Desp. Variáveis',[...monthly.map(m=>-m.va),-tot.va],false,'neg')}
+    ${row('Total Despesas',[...monthly.map(m=>-m.tot),-tot.tot],true,'neg')}
+    ${row('Saldo Bruto',[...monthly.map(m=>m.bal),tot.bal],true,'auto')}
+    ${reserve>0?row('(-) Meta de Reserva',[...monthly.map(m=>-m.reserve),-tot.reserve],false,'neg'):''}
+    ${reserve>0?row('Saldo Líquido',[...monthly.map(m=>m.balAfterReserve),tot.balAfterReserve],true,'auto'):''}
+  </tbody>`;
+
   if(flowChartI)flowChartI.destroy();
-  flowChartI=new Chart($('flowChart').getContext('2d'),{type:'bar',data:{labels:MONTHS_S,datasets:[{label:'Receitas',data:monthly.map(m=>m.inc),backgroundColor:'rgba(94,234,212,.7)',borderRadius:5},{label:'Despesas',data:monthly.map(m=>m.tot),backgroundColor:'rgba(248,113,113,.7)',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.03)'}}}}});
+  flowChartI=new Chart($('flowChart').getContext('2d'),{type:'bar',data:{labels:MONTHS_S,datasets:[{label:'Receitas',data:monthly.map(m=>m.inc),backgroundColor:'rgba(94,234,212,.7)',borderRadius:5},{label:'Despesas',data:monthly.map(m=>m.tot),backgroundColor:'rgba(248,113,113,.7)',borderRadius:5},{label:'Reserva',data:monthly.map(m=>m.reserve>0?m.reserve:0),backgroundColor:'rgba(251,191,36,.5)',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.03)'}}}}});
 }
+
+// SIDEBAR MOBILE TOGGLE
+window.toggleSidebar=function(){ $('sidebar').classList.toggle('open'); $('sideOverlay').classList.toggle('show'); };
+window.closeSidebar=function(){ $('sidebar').classList.remove('open'); $('sideOverlay').classList.remove('show'); };
 
 // CREDIT
 window.updateCCLimit=async function(){
