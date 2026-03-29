@@ -215,6 +215,20 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .inst-month-item{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border)}
 .inst-month-item:last-child{border-bottom:none}
 .inst-month-item:hover{background:var(--surface2)}
+/* AUTOCOMPLETE */
+.ac-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;transition:background .15s}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:var(--surface3)}
+.ac-item-name{font-size:13px;font-weight:500;flex:1}
+.ac-item-meta{font-size:10.5px;color:var(--text3)}
+/* IMPORT */
+.import-item{padding:12px 18px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:20px 1fr auto;gap:12px;align-items:start;transition:background .15s}
+.import-item:last-child{border-bottom:none}
+.import-item:hover{background:var(--surface2)}
+.import-item-dup{opacity:.5;background:rgba(248,113,113,.04)}
+.import-field{background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;width:100%}
+.import-field:focus{border-color:var(--accent)}
+.import-field option{background:var(--surface2)}
 /* CHECKBOX / BULK SELECT */
 .tx-item-wrap{position:relative}
 .tx-chk{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
@@ -342,6 +356,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="nav-sec">Principal</div>
       <div class="nav-item active" onclick="gotoPage('dashboard')"><span class="ni">📊</span> Dashboard</div>
       <div class="nav-item" onclick="gotoPage('transactions')"><span class="ni">💸</span> Lançamentos</div>
+      <div class="nav-item" onclick="gotoPage('import')"><span class="ni">📸</span> Importar Fatura</div>
       <div class="nav-item" onclick="gotoPage('installments')"><span class="ni">🔄</span> Parcelamentos</div>
       <div class="nav-item" onclick="gotoPage('pix')"><span class="ni">⚡</span> Pix</div>
       <div class="nav-sec">Análise</div>
@@ -583,6 +598,63 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       </div>
     </div>
 
+    <!-- IMPORT INVOICE PAGE -->
+    <div class="page" id="page-import">
+      <div class="page-hdr">
+        <div><div class="page-title">Importar Fatura 📸</div><div class="page-sub">Fotografe sua fatura — a IA categoriza automaticamente</div></div>
+      </div>
+
+      <!-- UPLOAD AREA -->
+      <div class="sec-card" style="margin-bottom:16px" id="importUploadCard">
+        <div class="sec-hdr"><div class="sec-title">1. Selecionar imagem(ns) da fatura</div></div>
+        <div style="padding:20px">
+          <div id="importDropZone" style="border:2px dashed var(--border2);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s" onclick="$('importFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border2)'" ondrop="handleImportDrop(event)">
+            <div style="font-size:36px;margin-bottom:12px">📸</div>
+            <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px">Arraste prints aqui ou clique para selecionar</div>
+            <div style="font-size:12px;color:var(--text3)">Pode enviar vários prints de uma vez • JPG, PNG, WebP</div>
+            <input type="file" id="importFileInput" multiple accept="image/*" style="display:none" onchange="handleImportFiles(this.files)">
+          </div>
+          <div id="importPreview" style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+
+      <!-- COMPETENCY MONTH -->
+      <div class="sec-card" style="margin-bottom:16px" id="importCompCard">
+        <div class="sec-hdr"><div class="sec-title">2. Mês de competência da fatura</div></div>
+        <div style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <input type="month" class="form-input" id="importComp" style="width:auto">
+          <div style="font-size:12px;color:var(--text3)">Ex: se é a fatura de abril/2026, selecione 2026-04</div>
+        </div>
+      </div>
+
+      <!-- PROCESS BUTTON -->
+      <div style="margin-bottom:18px" id="importProcessArea">
+        <button class="btn btn-primary" id="importBtn" onclick="processInvoice()" style="width:100%;padding:14px;font-size:15px">
+          🤖 Processar com IA e Categorizar
+        </button>
+      </div>
+
+      <!-- RESULTS -->
+      <div id="importResults" style="display:none">
+        <div class="sec-card" style="margin-bottom:16px">
+          <div class="sec-hdr">
+            <div>
+              <div class="sec-title">3. Revisar e Confirmar Lançamentos</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px" id="importResultsSub"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="importSelectAll()">Selecionar todos</button>
+              <button class="btn btn-primary" id="importConfirmBtn" onclick="confirmImport()">✓ Importar Selecionados</button>
+            </div>
+          </div>
+          <!-- TOTAL CHECK -->
+          <div id="importTotalCheck" style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;align-items:center"></div>
+          <!-- ITEMS LIST -->
+          <div id="importItemsList"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- CREDIT -->
     <div class="page" id="page-credit">
       <div class="page-hdr"><div><div class="page-title">Cartão de Crédito</div><div class="page-sub">Fatura e limite do mês</div></div></div>
@@ -622,7 +694,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <button class="type-btn income" onclick="setTxType('income',this)">↑ Receita</button>
     </div>
     <div class="form-row">
-      <div class="form-group" style="margin:0"><label class="form-label">Descrição *</label><input class="form-input" type="text" id="txDesc" placeholder="Ex: Supermercado"></div>
+      <div class="form-group" style="margin:0;position:relative">
+        <label class="form-label">Descrição *</label>
+        <input class="form-input" type="text" id="txDesc" placeholder="Ex: Supermercado, Netflix..." autocomplete="off" oninput="descAutocomplete(this.value)">
+        <div id="acDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4);max-height:200px;overflow-y:auto"></div>
+      </div>
       <div class="form-group" style="margin:0"><label class="form-label">Valor (R$) *</label><input class="form-input" type="number" id="txVal" placeholder="0,00" step="0.01" min="0"></div>
     </div>
     <div class="form-row">
@@ -817,6 +893,7 @@ const DEFAULT_CATS=[
   {name:'Tarifa Bancária',icon:'🏦',color:'#94a3b8',type:'expense'},
   {name:'Reembolso',icon:'↩️',color:'#34d399',type:'expense'},
   {name:'Outros',icon:'📦',color:'#545e78',type:'expense'},
+  {name:'Classificar',icon:'🏷️',color:'#94a3b8',type:'expense'},
   {name:'Salário',icon:'💼',color:'#5eead4',type:'income'},
   {name:'Benefícios',icon:'⭐',color:'#60a5fa',type:'income'},
   {name:'Freelance',icon:'🖥️',color:'#a78bfa',type:'income'},
@@ -960,6 +1037,7 @@ window.gotoPage=function(name){
   if(name==='cashflow')renderCashflow();
   if(name==='shared')renderSharedPage();
   if(name==='pix')renderPixPage();
+  if(name==='import')renderImportPage();
   if(name==='settings')renderSettings();
 };
 
@@ -2142,7 +2220,298 @@ function renderPixPage(){
 }
 
 // TOAST
-window.toast=function(ico,msg){ $('toastIco').textContent=ico; $('toastMsg').textContent=msg; const t=$('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); };
+window.toast=function(ico,msg){
+function buildHistory(){
+  // Build a map: normalized description → {category, expenseType, payment, values[], count}
+  const map={};
+  userData.transactions.forEach(t=>{
+    if(!t.desc) return;
+    const key=t.desc.toLowerCase().trim();
+    if(!map[key]) map[key]={desc:t.desc,category:t.category,expenseType:t.expenseType,payment:t.payment,values:[],count:0};
+    map[key].values.push(t.value);
+    map[key].count++;
+  });
+  return map;
+}
+
+function suggestFromHistory(query){
+  if(!query||query.length<2) return [];
+  const hist=buildHistory();
+  const q=query.toLowerCase();
+  return Object.values(hist)
+    .filter(h=>h.desc.toLowerCase().includes(q))
+    .sort((a,b)=>b.count-a.count)
+    .slice(0,6);
+}
+
+window.descAutocomplete=function(val){
+  const drop=$('acDropdown');
+  if(!val||val.length<2){ drop.style.display='none'; return; }
+  const suggestions=suggestFromHistory(val);
+  if(!suggestions.length){ drop.style.display='none'; return; }
+  const avgVal=s=>s.values.length?Math.round(s.values.reduce((a,v)=>a+v,0)/s.values.length*100)/100:0;
+  drop.innerHTML=suggestions.map(s=>`
+    <div class="ac-item" onclick="applyAutocomplete(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+      <div style="width:8px;height:8px;border-radius:50%;background:${catColor(s.category)};flex-shrink:0"></div>
+      <div class="ac-item-name">${s.desc}</div>
+      <div class="ac-item-meta">${catIcon(s.category)} ${s.category||'—'} · Média: ${fmtBRL(avgVal(s))} · ${s.count}x</div>
+    </div>`).join('');
+  drop.style.display='block';
+};
+
+window.applyAutocomplete=function(s){
+  $('txDesc').value=s.desc;
+  if(s.category) $('txCat').value=s.category;
+  if(s.expenseType) $('txExpType').value=s.expenseType;
+  if(s.payment) $('txPay').value=s.payment;
+  const avg=s.values.length?Math.round(s.values.reduce((a,v)=>a+v,0)/s.values.length*100)/100:0;
+  if(avg&&!$('txVal').value) $('txVal').value=avg;
+  $('acDropdown').style.display='none';
+};
+
+// Close dropdown when clicking outside
+document.addEventListener('click',e=>{ if(!e.target.closest('#txDesc')&&!e.target.closest('#acDropdown')) { const d=$('acDropdown'); if(d) d.style.display='none'; } });
+
+// ============ INVOICE IMPORT ============
+let importImages=[]; // base64 array
+let importParsed=[]; // parsed items from AI
+let importSelected=new Set();
+
+function renderImportPage(){
+  const now=new Date();
+  const yy=now.getFullYear(), mm=String(now.getMonth()+2>12?1:now.getMonth()+2).padStart(2,'0');
+  const compYear=now.getMonth()+2>12?yy+1:yy;
+  if(!$('importComp').value) $('importComp').value=`${compYear}-${mm}`;
+  importImages=[]; importParsed=[]; importSelected.clear();
+  $('importPreview').innerHTML='';
+  $('importResults').style.display='none';
+}
+
+window.handleImportDrop=function(e){
+  e.preventDefault();
+  $('importDropZone').style.borderColor='var(--border2)';
+  handleImportFiles(e.dataTransfer.files);
+};
+
+window.handleImportFiles=function(files){
+  const fileArr=Array.from(files).filter(f=>f.type.startsWith('image/'));
+  if(!fileArr.length){ toast('⚠️','Selecione imagens JPG ou PNG.'); return; }
+  const prev=$('importPreview');
+  fileArr.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const b64=e.target.result;
+      importImages.push(b64);
+      const img=document.createElement('div');
+      img.style.cssText='position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--border2)';
+      img.innerHTML=`<img src="${b64}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);font-size:9px;color:#fff;text-align:center;padding:2px">${(file.size/1024).toFixed(0)}KB</div>`;
+      prev.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+  toast('✅',`${fileArr.length} imagem(ns) carregada(s)!`);
+};
+
+window.processInvoice=async function(){
+  if(!importImages.length){ toast('⚠️','Adicione pelo menos uma imagem da fatura.'); return; }
+  const comp=$('importComp').value;
+  if(!comp){ toast('⚠️','Selecione o mês de competência.'); return; }
+
+  const btn=$('importBtn');
+  btn.disabled=true; btn.textContent='🤖 Analisando imagens...';
+
+  try{
+    // Build history context for AI
+    const hist=buildHistory();
+    const histSummary=Object.values(hist).slice(0,50).map(h=>`"${h.desc}" → ${h.category}, ${h.expenseType}`).join('\n');
+    const cats=getCats().map(c=>c.name).join(', ');
+
+    // Call Claude API with images
+    const messages=[{
+      role:'user',
+      content:[
+        ...importImages.map(img=>({
+          type:'image',
+          source:{type:'base64',media_type:'image/jpeg',data:img.split(',')[1]}
+        })),
+        {type:'text',text:`Você é um assistente de finanças pessoais. Analise esses prints de fatura de cartão de crédito e extraia TODOS os lançamentos.
+
+CATEGORIAS DISPONÍVEIS: ${cats}
+
+HISTÓRICO DO USUÁRIO (descrição → categoria sugerida):
+${histSummary}
+
+INSTRUÇÕES:
+1. Extraia TODOS os lançamentos (ignorar pagamentos de fatura, estornos negativos que são pagamentos)
+2. Para cada lançamento, sugira a categoria baseada no histórico ou no tipo de estabelecimento
+3. Se não souber a categoria, use "Classificar"
+4. Identifique se é parcelado (ex: "Parcela 01 de 02")
+5. O mês de competência é ${comp}
+
+Responda APENAS em JSON válido, sem markdown, sem texto extra:
+{
+  "total_fatura": número,
+  "items": [
+    {
+      "desc": "Nome do estabelecimento",
+      "value": número,
+      "date": "YYYY-MM-DD",
+      "category": "categoria sugerida",
+      "expenseType": "fixed|variable",
+      "payment": "card",
+      "is_installment": false,
+      "install_current": null,
+      "install_total": null,
+      "confidence": "high|medium|low"
+    }
+  ]
+}`}
+      ]
+    }];
+
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages})
+    });
+    const data=await res.json();
+    const raw=data.content?.[0]?.text||'{}';
+
+    let parsed;
+    try{ parsed=JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+    catch(e){ toast('❌','Erro ao processar resposta da IA. Tente novamente.'); return; }
+
+    importParsed=parsed.items||[];
+    importSelected=new Set(importParsed.map((_,i)=>i));
+
+    renderImportResults(parsed.total_fatura||0, comp);
+    $('importResults').style.display='block';
+    $('importResults').scrollIntoView({behavior:'smooth'});
+
+  }catch(e){
+    toast('❌','Erro ao chamar IA. Verifique sua conexão.');
+    console.error(e);
+  }finally{
+    btn.disabled=false; btn.textContent='🤖 Processar com IA e Categorizar';
+  }
+};
+
+function renderImportResults(totalFatura, comp){
+  // Check for duplicates against existing transactions in same competency
+  const existingThisComp=userData.transactions.filter(t=>{
+    const k=t.competency||t.date.substr(0,7);
+    return k===comp;
+  });
+
+  const totalSelected=importParsed.filter((_,i)=>importSelected.has(i)).reduce((s,t)=>s+t.value,0);
+  const diff=totalFatura>0?Math.abs(totalSelected-totalFatura):0;
+
+  // Total check banner
+  $('importTotalCheck').innerHTML=`
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;width:100%">
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Total da Fatura</div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)">${fmtBRL(totalFatura)}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Total Selecionado</div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent)">${fmtBRL(totalSelected)}</div></div>
+      <div style="flex:1;min-width:200px">
+        ${totalFatura>0?(diff<1?'<span style="color:var(--accent);font-size:13px">✓ Total bate com a fatura!</span>':`<span style="color:var(--yellow);font-size:13px">⚠ Diferença de ${fmtBRL(diff)} — verifique os itens</span>`):''}
+      </div>
+      <div style="font-size:11px;color:var(--text3)">${importParsed.length} lançamentos encontrados · Competência: ${comp}</div>
+    </div>`;
+
+  $('importResultsSub').textContent=`${importSelected.size} de ${importParsed.length} selecionados para importar`;
+
+  const catOptions=getCats().map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
+
+  // Check for potential duplicates
+  function isDuplicate(item){
+    return existingThisComp.some(t=>
+      Math.abs(t.value-item.value)<0.02 &&
+      t.desc.toLowerCase().slice(0,6)===item.desc.toLowerCase().slice(0,6)
+    );
+  }
+
+  $('importItemsList').innerHTML=importParsed.map((item,i)=>{
+    const dup=isDuplicate(item);
+    const sel=importSelected.has(i);
+    const confColor=item.confidence==='high'?'var(--accent)':item.confidence==='medium'?'var(--yellow)':'var(--text3)';
+    return `<div class="import-item${dup?' import-item-dup':''}" id="irow-${i}">
+      <input type="checkbox" style="margin-top:3px;accent-color:var(--accent)" ${sel?'checked':''} ${dup?'':''}
+        onchange="toggleImportItem(${i},this.checked)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <input class="import-field" value="${item.desc}" oninput="importParsed[${i}].desc=this.value" style="margin-bottom:5px;font-weight:600">
+          <div style="display:flex;gap:6px">
+            <select class="import-field" style="flex:1" onchange="importParsed[${i}].category=this.value">
+              ${catOptions.replace(`value="${item.category}"`,`value="${item.category}" selected`)}
+            </select>
+            <select class="import-field" style="width:100px" onchange="importParsed[${i}].expenseType=this.value">
+              <option value="variable"${item.expenseType==='variable'?' selected':''}>Variável</option>
+              <option value="fixed"${item.expenseType==='fixed'?' selected':''}>Fixo</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <input class="import-field" type="number" value="${item.value}" step="0.01" oninput="importParsed[${i}].value=parseFloat(this.value)||0;renderImportTotals()" style="margin-bottom:5px;font-weight:700;color:var(--red);text-align:right">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input class="import-field" type="date" value="${item.date||''}" oninput="importParsed[${i}].date=this.value" style="flex:1">
+            <span style="font-size:10px;color:${confColor}" title="Confiança da IA">${item.confidence==='high'?'✓ Alta':item.confidence==='medium'?'~ Média':'? Baixa'}</span>
+          </div>
+          ${dup?'<div style="font-size:10px;color:var(--red);margin-top:4px">⚠ Possível duplicata!</div>':''}
+          ${item.is_installment?`<div style="font-size:10px;color:var(--accent5);margin-top:4px">📦 Parcela ${item.install_current}/${item.install_total}</div>`:''}
+        </div>
+      </div>
+      <button class="btn-icon" onclick="toggleImportItem(${i},false);document.getElementById('irow-${i}').style.opacity='.3'" title="Remover">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function renderImportTotals(){
+  const totalSelected=importParsed.filter((_,i)=>importSelected.has(i)).reduce((s,t)=>s+t.value,0);
+  $('importResultsSub').textContent=`${importSelected.size} de ${importParsed.length} selecionados · Total: ${fmtBRL(totalSelected)}`;
+}
+
+window.toggleImportItem=function(i,checked){
+  if(checked) importSelected.add(i); else importSelected.delete(i);
+  renderImportTotals();
+};
+
+window.importSelectAll=function(){
+  importParsed.forEach((_,i)=>importSelected.add(i));
+  document.querySelectorAll('#importItemsList input[type=checkbox]').forEach(c=>c.checked=true);
+  renderImportTotals();
+};
+
+window.confirmImport=async function(){
+  if(!importSelected.size){ toast('⚠️','Selecione ao menos um item.'); return; }
+  const comp=$('importComp').value;
+  const btn=$('importConfirmBtn');
+  btn.disabled=true; btn.textContent='Salvando...';
+  let saved=0;
+  try{
+    for(const i of importSelected){
+      const item=importParsed[i];
+      const tx={
+        desc:item.desc, value:item.value,
+        date:item.date||`${comp}-01`,
+        competency:comp,
+        category:item.category||'Classificar',
+        expenseType:item.expenseType||'variable',
+        payment:'card', status:'paid',
+        type:'expense', installment:!!item.is_installment,
+        ...(item.is_installment?{installCurrent:item.install_current||1,installTotal:item.install_total||1}:{})
+      };
+      const newId=await fsAddTx(tx);
+      userData.transactions.push({id:newId,...tx});
+      saved++;
+    }
+    renderAll();
+    toast('✅',`${saved} lançamentos importados!`);
+    // Reset
+    importImages=[]; importParsed=[]; importSelected.clear();
+    $('importResults').style.display='none';
+    $('importPreview').innerHTML='';
+  }catch(e){ toast('❌','Erro ao importar. Tente novamente.'); console.error(e); }
+  finally{ btn.disabled=false; btn.textContent='✓ Importar Selecionados'; }
+}; $('toastIco').textContent=ico; $('toastMsg').textContent=msg; const t=$('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); };
 
 // KEYBOARD
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeTxModal(); closeBudgetModal(); } });
