@@ -958,50 +958,45 @@ function txItem(t){
 }
 
 // ===== AVERAGE HELPERS =====
-// Returns average monthly value for a filter over the last N months (excluding current month)
-function calcAvgMonths(n, filterFn){
-  const results=[];
-  for(let i=1;i<=n;i++){
-    let m=curMonth-i, y=curYear;
-    if(m<0){m+=12;y--;}
-    const monthTxs=userData.transactions.filter(t=>{
-      const dt=new Date(t.date+'T00:00:00');
-      return dt.getMonth()===m && dt.getFullYear()===y;
-    });
-    const val=monthTxs.filter(filterFn).reduce((s,t)=>s+t.value,0);
-    if(val>0) results.push(val); // only count months with data
-  }
-  return results.length?results.reduce((s,v)=>s+v,0)/results.length:0;
-}
-
-// Returns annual average (12 months of current year, excluding current month if no data)
+// Returns average monthly value for a filter — all months with ANY data in the year
 function calcAnnualAvg(filterFn){
-  const months=[];
+  const withData=[];
   for(let m=0;m<12;m++){
-    // skip future months and current month
-    if(curYear===new Date().getFullYear() && m>=curMonth) continue;
-    const monthTxs=userData.transactions.filter(t=>{
+    // skip future months (keep current month if it has data)
+    const now=new Date();
+    if(curYear===now.getFullYear() && m>now.getMonth()) continue;
+    const val=userData.transactions.filter(t=>{
       const dt=new Date(t.date+'T00:00:00');
-      return dt.getMonth()===m && dt.getFullYear()===curYear;
-    });
-    const val=monthTxs.filter(filterFn).reduce((s,t)=>s+t.value,0);
-    months.push(val);
+      return dt.getMonth()===m && dt.getFullYear()===curYear && filterFn(t);
+    }).reduce((s,t)=>s+t.value,0);
+    if(val>0) withData.push(val);
   }
-  const withData=months.filter(v=>v>0);
   return withData.length?withData.reduce((s,v)=>s+v,0)/withData.length:0;
 }
 
-function avgHtml(current, avg, lbl){
+// Category monthly history helper
+function catMonthlyHistory(cat){
+  const map={};
+  userData.transactions.filter(t=>t.category===cat&&t.type==='expense').forEach(t=>{
+    const k=t.date.substr(0,7);
+    map[k]=(map[k]||0)+t.value;
+  });
+  return Object.values(map); // one value per month that has data
+}
+
+function avgHtml(current, avg){
   if(!avg) return '';
   const diff=current-avg;
   const pct=avg>0?Math.abs(diff/avg*100):0;
-  let arrow='', cls='avg-eq', txt='';
-  if(Math.abs(diff)>0.5){
-    arrow=diff>0?'↑':'↓';
-    cls=diff>0?'avg-up':'avg-down';
-    txt=`${arrow} ${pct.toFixed(0)}% vs média`;
-  } else { txt='= na média'; }
-  return `<span class="${cls}">${arrow}</span> Média anual: ${fmtBRL(avg)} <span style="opacity:.7">(${txt})</span>`;
+  let arrow='―', cls='avg-eq', txt='= na média';
+  if(diff>0.5){
+    arrow='↑'; cls='avg-up';
+    txt=`↑ ${pct.toFixed(0)}% acima da média`;
+  } else if(diff<-0.5){
+    arrow='↓'; cls='avg-down';
+    txt=`↓ ${pct.toFixed(0)}% abaixo da média`;
+  }
+  return `<span class="${cls}">${arrow}</span>&nbsp;Média anual: <b>${fmtBRL(avg)}</b>&nbsp;<span style="opacity:.65">(${txt})</span>`;
 }
 
 // DASHBOARD FILTER
@@ -1048,7 +1043,7 @@ function renderDashboard(){
   const avgFix =calcAnnualAvg(t=>t.type==='expense'&&t.expenseType==='fixed');
   const avgVar =calcAnnualAvg(t=>t.type==='expense'&&t.expenseType==='variable');
 
-  const setAvg=(id, cur, avg)=>{ const el=$(id); if(el) el.innerHTML=avg?avgHtml(cur,avg,''):``; };
+  const setAvg=(id, cur, avg)=>{ const el=$(id); if(el) el.innerHTML=avg?avgHtml(cur,avg):''; };
   setAvg('dIncAvg',   inc,    avgInc);
   setAvg('dExpAvg',   exp,    avgExp);
   setAvg('dBalAvg',   bal,    avgBal!==0?Math.abs(avgBal):0);
@@ -1246,13 +1241,86 @@ window.saveBudget=async function(){
   userData.budgets[cat]=lim; await saveSettings(); closeBudgetModal(); renderBudget(); toast('🎯','Meta salva!');
 };
 window.deleteBudget=async function(cat){ delete userData.budgets[cat]; await saveSettings(); renderBudget(); toast('🗑️',`Meta de ${cat} removida.`); };
+window.editBudget=function(cat){
+  $('budCat').value=cat;
+  $('budAvgInfo').style.display='none';
+  $('budLimitHint').textContent='';
+  $('budModal').classList.add('open');
+  setTimeout(()=>updateBudgetAvg(),50);
+};
+
 function renderBudget(){
-  const txs=getMonthTx().filter(t=>t.type==='expense'); const b=userData.budgets||{};
-  if(!Object.keys(b).length){ $('budgetGrid').innerHTML=`<div class="empty-st" style="grid-column:1/-1;background:var(--surface);border-radius:var(--radius);padding:44px"><div class="empty-ico">🎯</div><div class="empty-txt">Clique em <b>+ Definir Meta</b> para criar orçamentos.</div></div>`; $('budgetSummary').innerHTML=''; return; }
-  let tB=0,tS=0; Object.entries(b).forEach(([c,l])=>{ tB+=l; tS+=txs.filter(t=>t.category===c).reduce((s,t)=>s+t.value,0); });
+  const txs=getMonthTx().filter(t=>t.type==='expense');
+  const b=userData.budgets||{};
+  if(!Object.keys(b).length){
+    $('budgetGrid').innerHTML=`<div class="empty-st" style="grid-column:1/-1;background:var(--surface);border-radius:var(--radius);padding:44px"><div class="empty-ico">🎯</div><div class="empty-txt">Clique em <b>+ Definir Meta</b> para criar orçamentos.</div></div>`;
+    $('budgetSummary').innerHTML=''; return;
+  }
+  let tB=0,tS=0;
+  Object.entries(b).forEach(([c,l])=>{ tB+=l; tS+=txs.filter(t=>t.category===c).reduce((s,t)=>s+t.value,0); });
   const pct=tB>0?Math.min((tS/tB)*100,100):0, bc=pct>90?'var(--red)':pct>70?'var(--yellow)':'var(--accent)';
   $('budgetSummary').innerHTML=`<div class="chart-card" style="margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700">Orçamento Total do Mês</div><div style="font-size:13px">${fmtBRL(tS)} <span style="color:var(--text3)">/ ${fmtBRL(tB)}</span></div></div><div class="prog-bg" style="height:8px"><div class="prog-fill" style="width:${pct}%;background:${bc}"></div></div><div style="text-align:right;font-size:10.5px;color:var(--text3);margin-top:5px">${pct.toFixed(0)}% utilizado</div></div>`;
-  $('budgetGrid').innerHTML=Object.entries(b).map(([cat,lim])=>{ const sp=txs.filter(t=>t.category===cat).reduce((s,t)=>s+t.value,0); const p=lim>0?Math.min((sp/lim)*100,100):0; const bcc=p>90?'var(--red)':p>70?'var(--yellow)':catColor(cat); const badge=p>100?'<span class="badge b-err">Excedido</span>':p>80?'<span class="badge b-warn">Atenção</span>':'<span class="badge b-ok">OK</span>'; return `<div class="bud-card"><div class="bud-top"><div class="bud-cat"><div class="bud-dot" style="background:${catColor(cat)}"></div><div class="bud-name">${catIcon(cat)} ${cat}</div></div><div style="display:flex;gap:5px;align-items:center">${badge}<button class="btn btn-danger btn-sm" onclick="deleteBudget('${cat}')">✕</button></div></div><div class="bud-amts"><span>Gasto: ${fmtBRL(sp)}</span><span>Limite: ${fmtBRL(lim)}</span></div><div class="prog-bg"><div class="prog-fill" style="width:${p}%;background:${bcc}"></div></div><div class="bud-pct">${p.toFixed(0)}% utilizado</div></div>`; }).join('');
+
+  $('budgetGrid').innerHTML=Object.entries(b).map(([cat,lim])=>{
+    const spent=txs.filter(t=>t.category===cat).reduce((s,t)=>s+t.value,0);
+    const p=lim>0?Math.min((spent/lim)*100,100):0;
+    const barColor=p>90?'var(--red)':p>70?'var(--yellow)':catColor(cat);
+    const badge=p>100?'<span class="badge b-err">Excedido</span>':p>80?'<span class="badge b-warn">Atenção</span>':'<span class="badge b-ok">OK</span>';
+
+    // Calculate average for this category
+    const hist=catMonthlyHistory(cat);
+    const avg=hist.length?hist.reduce((s,v)=>s+v,0)/hist.length:0;
+    const avgLabel=avg?fmtBRL(avg):'Sem histórico';
+
+    // Comparison indicators
+    const spentVsMeta=lim>0?((spent/lim)*100).toFixed(0):null;
+    const spentVsAvg=avg>0?spent-avg:null;
+    const avgVsMeta=avg>0&&lim>0?avg-lim:null;
+
+    function indicator(val, invertColor){
+      if(val===null) return '<span style="color:var(--text3)">—</span>';
+      const pos=val>=0;
+      const color=invertColor?(pos?'var(--red)':'#86efac'):(pos?'#86efac':'var(--red)');
+      const sign=pos?'↑':'↓';
+      return `<span style="color:${color};font-size:10px">${sign}</span>`;
+    }
+
+    return `<div class="bud-card">
+      <div class="bud-top">
+        <div class="bud-cat">
+          <div class="bud-dot" style="background:${catColor(cat)}"></div>
+          <div class="bud-name">${catIcon(cat)} ${cat}</div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          ${badge}
+          <button class="btn btn-ghost btn-sm" onclick="editBudget('${cat}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteBudget('${cat}')">✕</button>
+        </div>
+      </div>
+
+      <!-- REAL | META | MÉDIA -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:12px;text-align:center">
+        <div style="background:var(--surface3);border-radius:8px;padding:8px 4px">
+          <div style="font-size:9px;color:var(--text3);letter-spacing:.5px;margin-bottom:3px">REAL</div>
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${spent>lim?'var(--red)':'var(--text)'}">${fmtBRL(spent)}</div>
+          ${spentVsMeta!==null?`<div style="font-size:9px;color:var(--text3);margin-top:2px">${spentVsMeta}% da meta</div>`:''}
+        </div>
+        <div style="background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.2);border-radius:8px;padding:8px 4px">
+          <div style="font-size:9px;color:var(--accent);letter-spacing:.5px;margin-bottom:3px">META</div>
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--accent)">${fmtBRL(lim)}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:2px">${fmtBRL(lim-spent)} restam</div>
+        </div>
+        <div style="background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.15);border-radius:8px;padding:8px 4px">
+          <div style="font-size:9px;color:var(--accent4);letter-spacing:.5px;margin-bottom:3px">MÉDIA</div>
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--accent4)">${avgLabel}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:2px">${avg&&lim?(avg>lim?'⚠ acima da meta':'✓ dentro da meta'):(hist.length+' '+(hist.length===1?'mês':'meses')+' de dados')}</div>
+        </div>
+      </div>
+
+      <div class="prog-bg"><div class="prog-fill" style="width:${p}%;background:${barColor}"></div></div>
+      <div class="bud-pct">${p.toFixed(0)}% utilizado</div>
+    </div>`;
+  }).join('');
 }
 
 // CASHFLOW
