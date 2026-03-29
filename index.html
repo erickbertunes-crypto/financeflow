@@ -192,6 +192,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .cf-table td:first-child{text-align:left;font-weight:500}
 .cf-table tr.subtotal td{background:rgba(255,255,255,.02);font-weight:700}
 .cf-table .pos{color:var(--accent)}.cf-table .neg{color:var(--red)}
+.cf-table tr.patrimonio td{background:rgba(167,139,250,.08);font-weight:700;border-top:2px solid rgba(167,139,250,.25)}
+.cf-table .purple{color:var(--accent5)}
 /* INSTALL TABLE */
 .inst-wrap{overflow-x:auto}
 .inst-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:680px}
@@ -314,7 +316,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="chart-card"><div class="chart-title">Fixo vs Variável</div><div class="chart-wrap"><canvas id="typeChart"></canvas></div></div>
       </div>
       <div class="sec-card">
-        <div class="sec-hdr"><div class="sec-title">Últimos Lançamentos</div></div>
+        <div class="sec-hdr">
+          <div class="sec-title">Últimos Lançamentos</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="filter-btn active" id="dashF-all" onclick="setDashFilter('all')">Todos</button>
+            <button class="filter-btn" id="dashF-fixed" onclick="setDashFilter('fixed')">📦 Fixo</button>
+            <button class="filter-btn" id="dashF-variable" onclick="setDashFilter('variable')">🎲 Variável</button>
+            <button class="filter-btn" id="dashF-installment" onclick="setDashFilter('installment')">🔄 Parcelado</button>
+          </div>
+        </div>
         <div class="tx-list" id="recentList"><div class="empty-st"><div class="empty-ico">📭</div><div class="empty-txt">Nenhum lançamento ainda.<br>Clique em <b>+ Novo Lançamento</b> para começar!</div></div></div>
       </div>
     </div>
@@ -366,17 +376,24 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <!-- CASHFLOW -->
     <div class="page" id="page-cashflow">
       <div class="page-hdr">
-        <div><div class="page-title">Fluxo de Caixa</div><div class="page-sub">Entradas e saídas por mês</div></div>
+        <div><div class="page-title">Fluxo de Caixa</div><div class="page-sub">Entradas, saídas e evolução do patrimônio</div></div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 12px">
             <span style="font-size:11px;color:var(--text3);white-space:nowrap">🏦 Meta Reserva/mês</span>
             <input type="number" id="cfReserve" placeholder="0,00" step="0.01" min="0" oninput="saveReserve()" style="background:transparent;border:none;outline:none;color:var(--accent);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;width:100px">
           </div>
+          <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid rgba(167,139,250,.3);border-radius:10px;padding:6px 12px">
+            <span style="font-size:11px;color:var(--text3);white-space:nowrap">💎 Patrimônio Inicial</span>
+            <input type="number" id="cfPatrimonio" placeholder="0,00" step="0.01" min="0" oninput="savePatrimonio()" style="background:transparent;border:none;outline:none;color:var(--accent5);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;width:110px">
+          </div>
           <select class="form-input" id="cfYear" style="width:auto;padding:6px 12px;font-size:12px" onchange="renderCashflow()"></select>
         </div>
       </div>
       <div class="charts2" style="grid-template-columns:1fr">
-        <div class="chart-card"><div class="chart-title">Receitas vs Despesas</div><div class="chart-wrap" style="height:230px"><canvas id="flowChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Receitas vs Despesas</div><div class="chart-wrap" style="height:220px"><canvas id="flowChart"></canvas></div></div>
+      </div>
+      <div class="charts2" style="grid-template-columns:1fr">
+        <div class="chart-card"><div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">Evolução do Patrimônio<span style="font-size:11px;color:var(--text3);font-weight:400">acumulado mês a mês</span></div><div class="chart-wrap" style="height:200px"><canvas id="patriChart"></canvas></div></div>
       </div>
       <div class="sec-card">
         <div class="sec-hdr"><div class="sec-title">Resumo Anual</div></div>
@@ -537,12 +554,12 @@ const txCol  =()=>collection(db,'users',curUser.uid,'transactions');
 
 async function loadUserData(){
   const snap=await getDoc(userRef());
-  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; }
+  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.patrimonio=d.patrimonio||0; }
   const txSnap=await getDocs(txCol());
   userData.transactions=[];
   txSnap.forEach(d=>userData.transactions.push({id:d.id,...d.data()}));
 }
-async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0},{merge:true}); }
+async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,patrimonio:userData.patrimonio||0},{merge:true}); }
 async function fsAddTx(tx){ const{id,...data}=tx; const ref=await addDoc(txCol(),{...data,createdAt:serverTimestamp()}); return ref.id; }
 async function fsUpdateTx(id,data){ await setDoc(doc(db,'users',curUser.uid,'transactions',id),data,{merge:true}); }
 async function fsDeleteTx(id){ await deleteDoc(doc(db,'users',curUser.uid,'transactions',id)); }
@@ -623,6 +640,7 @@ function setupUI(){
   const years=[...new Set(userData.transactions.map(t=>new Date(t.date+'T00:00:00').getFullYear()).concat([curYear]))].sort();
   $('cfYear').innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); $('cfYear').value=curYear;
   if(userData.reserve>0) $('cfReserve').value=userData.reserve;
+  if(userData.patrimonio>0) $('cfPatrimonio').value=userData.patrimonio;
 }
 
 // MONTH NAV
@@ -716,6 +734,23 @@ function txItem(t){
   return `<div class="tx-item"><div class="tx-dot" style="background:${catColor(t.category)}"></div><div><div class="tx-name">${t.desc}</div><div class="tx-meta">${fmtDate(t.date)} · ${catIcon(t.category)} ${t.category||'—'} · ${PAY_LABEL[t.payment]||'—'} ${st} ${inst} ${tp}</div></div><div class="tx-amt ${t.type}">${t.type==='expense'?'−':'+'}${fmtBRL(t.value)}</div><div style="display:flex;gap:3px"><button class="btn-icon" onclick="openTxModal('${t.id}')" title="Editar">✏️</button><button class="btn-icon" onclick="deleteTx('${t.id}')" title="Excluir">🗑️</button></div></div>`;
 }
 
+// DASHBOARD FILTER
+let dashFilter='all';
+window.setDashFilter=function(f){
+  dashFilter=f;
+  ['all','fixed','variable','installment'].forEach(k=>{
+    $('dashF-'+k)?.classList.toggle('active',k===f);
+  });
+  renderRecentList();
+};
+function renderRecentList(){
+  let txs=getMonthTx().sort((a,b)=>b.date.localeCompare(a.date));
+  if(dashFilter==='fixed') txs=txs.filter(t=>t.expenseType==='fixed'&&t.type==='expense');
+  else if(dashFilter==='variable') txs=txs.filter(t=>t.expenseType==='variable'&&t.type==='expense');
+  else if(dashFilter==='installment') txs=txs.filter(t=>t.installment);
+  $('recentList').innerHTML=txs.length?txs.map(txItem).join(''):`<div class="empty-st"><div class="empty-ico">📭</div><div class="empty-txt">Nenhum lançamento neste filtro.</div></div>`;
+}
+
 // DASHBOARD
 function renderDashboard(){
   const txs=getMonthTx();
@@ -733,15 +768,71 @@ function renderDashboard(){
   $('dCard').textContent=fmtBRL(card); $('dCardCt').textContent=`${txs.filter(t=>t.type==='expense'&&t.payment==='card').length} compras`;
   $('dInst').textContent=fmtBRL(inst); $('dInstCt').textContent=`${txs.filter(t=>t.installment&&t.type==='expense').length} parcelas`;
   $('dFixed').textContent=fmtBRL(fixed); $('dVar').textContent=fmtBRL(variable);
-  const recent=[...txs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
-  $('recentList').innerHTML=recent.length?recent.map(txItem).join(''):`<div class="empty-st"><div class="empty-ico">📭</div><div class="empty-txt">Nenhum lançamento este mês.</div></div>`;
-  // Charts
+  renderRecentList();
+
+  // CAT CHART with value + %
   const catMap={}; txs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.value;});
   const cats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const totalExp=cats.reduce((s,c)=>s+c[1],0);
   if(catChartI)catChartI.destroy();
-  if(cats.length) catChartI=new Chart($('catChart').getContext('2d'),{type:'doughnut',data:{labels:cats.map(c=>c[0]),datasets:[{data:cats.map(c=>c[1]),backgroundColor:cats.map(c=>catColor(c[0])),borderWidth:2,borderColor:'#12151c'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{color:'#7a84a0',font:{family:'DM Sans',size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtBRL(ctx.raw)}`}}}}});
+  if(cats.length){
+    catChartI=new Chart($('catChart').getContext('2d'),{
+      type:'doughnut',
+      data:{
+        labels:cats.map(c=>c[0]),
+        datasets:[{data:cats.map(c=>c[1]),backgroundColor:cats.map(c=>catColor(c[0])),borderWidth:2,borderColor:'#12151c'}]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'58%',
+        plugins:{
+          legend:{
+            position:'right',
+            labels:{
+              color:'#7a84a0',font:{family:'DM Sans',size:10},boxWidth:10,padding:8,
+              generateLabels(chart){
+                return chart.data.labels.map((lbl,i)=>{
+                  const val=chart.data.datasets[0].data[i];
+                  const pct=totalExp>0?((val/totalExp)*100).toFixed(1):0;
+                  return{text:`${lbl}  ${fmtBRL(val)} (${pct}%)`,fillStyle:chart.data.datasets[0].backgroundColor[i],hidden:false,index:i};
+                });
+              }
+            }
+          },
+          tooltip:{callbacks:{label:ctx=>{const pct=totalExp>0?((ctx.raw/totalExp)*100).toFixed(1):0; return ` ${ctx.label}: ${fmtBRL(ctx.raw)} (${pct}%)`;}}}
+        }
+      }
+    });
+  }
+
+  // TYPE CHART with value + %
   if(typeChartI)typeChartI.destroy();
-  typeChartI=new Chart($('typeChart').getContext('2d'),{type:'doughnut',data:{labels:['Fixo','Variável'],datasets:[{data:[fixed,variable],backgroundColor:['#fbbf24','#fb923c'],borderWidth:2,borderColor:'#12151c'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10,padding:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtBRL(ctx.raw)}`}}}}});
+  const typeTotal=fixed+variable;
+  typeChartI=new Chart($('typeChart').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['Fixo','Variável'],
+      datasets:[{data:[fixed,variable],backgroundColor:['#fbbf24','#fb923c'],borderWidth:2,borderColor:'#12151c'}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{
+        legend:{
+          position:'right',
+          labels:{
+            color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10,padding:10,
+            generateLabels(chart){
+              return chart.data.labels.map((lbl,i)=>{
+                const val=chart.data.datasets[0].data[i];
+                const pct=typeTotal>0?((val/typeTotal)*100).toFixed(1):0;
+                return{text:`${lbl}  ${fmtBRL(val)} (${pct}%)`,fillStyle:chart.data.datasets[0].backgroundColor[i],hidden:false,index:i};
+              });
+            }
+          }
+        },
+        tooltip:{callbacks:{label:ctx=>{const pct=typeTotal>0?((ctx.raw/typeTotal)*100).toFixed(1):0; return ` ${ctx.label}: ${fmtBRL(ctx.raw)} (${pct}%)`;}}}
+      }
+    }
+  });
 }
 
 // TX PAGE
