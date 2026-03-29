@@ -95,6 +95,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .card-val{font-family:'Syne',sans-serif;font-size:21px;font-weight:700}
 .card-val.neg{color:var(--red)}.card-val.pos{color:var(--accent)}
 .card-sub2{font-size:10.5px;color:var(--text3);margin-top:5px}
+.card-avg{font-size:10px;color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);display:flex;align-items:center;gap:4px}
+.card-avg .avg-up{color:#86efac}.card-avg .avg-down{color:var(--red)}.card-avg .avg-eq{color:var(--text3)}
 .card-ico{position:absolute;top:14px;right:14px;font-size:19px;opacity:.22}
 /* CHARTS */
 .charts2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:18px}
@@ -356,15 +358,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <button class="btn btn-primary" onclick="openTxModal()">+ Novo Lançamento</button>
       </div>
       <div class="cg4">
-        <div class="card c-teal"><div class="card-ico">💰</div><div class="card-lbl">Receita Total</div><div class="card-val pos" id="dInc">R$ 0</div><div class="card-sub2" id="dIncCt">0 lançamentos</div></div>
-        <div class="card c-pink"><div class="card-ico">💸</div><div class="card-lbl">Despesas Total</div><div class="card-val neg" id="dExp">R$ 0</div><div class="card-sub2" id="dExpCt">0 lançamentos</div></div>
-        <div class="card c-blue"><div class="card-ico">📊</div><div class="card-lbl">Saldo do Mês</div><div class="card-val" id="dBal">R$ 0</div><div class="card-sub2">receitas − despesas</div></div>
-        <div class="card c-orange"><div class="card-ico">💳</div><div class="card-lbl">Fatura Cartão</div><div class="card-val neg" id="dCard">R$ 0</div><div class="card-sub2" id="dCardCt">0 compras</div></div>
+        <div class="card c-teal"><div class="card-ico">💰</div><div class="card-lbl">Receita Total</div><div class="card-val pos" id="dInc">R$ 0</div><div class="card-sub2" id="dIncCt">0 lançamentos</div><div class="card-avg" id="dIncAvg"></div></div>
+        <div class="card c-pink"><div class="card-ico">💸</div><div class="card-lbl">Despesas Total</div><div class="card-val neg" id="dExp">R$ 0</div><div class="card-sub2" id="dExpCt">0 lançamentos</div><div class="card-avg" id="dExpAvg"></div></div>
+        <div class="card c-blue"><div class="card-ico">📊</div><div class="card-lbl">Saldo do Mês</div><div class="card-val" id="dBal">R$ 0</div><div class="card-sub2">receitas − despesas</div><div class="card-avg" id="dBalAvg"></div></div>
+        <div class="card c-orange"><div class="card-ico">💳</div><div class="card-lbl">Fatura Cartão</div><div class="card-val neg" id="dCard">R$ 0</div><div class="card-sub2" id="dCardCt">0 compras</div><div class="card-avg" id="dCardAvg"></div></div>
       </div>
       <div class="cg3">
-        <div class="card c-purple"><div class="card-ico">🔄</div><div class="card-lbl">Parcelas do Mês</div><div class="card-val" id="dInst" style="color:var(--accent5)">R$ 0</div><div class="card-sub2" id="dInstCt">0 parcelas</div></div>
-        <div class="card c-yellow"><div class="card-ico">📦</div><div class="card-lbl">Despesas Fixas</div><div class="card-val" id="dFixed" style="color:var(--yellow)">R$ 0</div><div class="card-sub2">competência do mês</div></div>
-        <div class="card c-orange"><div class="card-ico">🎲</div><div class="card-lbl">Despesas Variáveis</div><div class="card-val" id="dVar" style="color:var(--accent3)">R$ 0</div><div class="card-sub2">competência do mês</div></div>
+        <div class="card c-purple"><div class="card-ico">🔄</div><div class="card-lbl">Parcelas do Mês</div><div class="card-val" id="dInst" style="color:var(--accent5)">R$ 0</div><div class="card-sub2" id="dInstCt">0 parcelas</div><div class="card-avg" id="dInstAvg"></div></div>
+        <div class="card c-yellow"><div class="card-ico">📦</div><div class="card-lbl">Despesas Fixas</div><div class="card-val" id="dFixed" style="color:var(--yellow)">R$ 0</div><div class="card-sub2">competência do mês</div><div class="card-avg" id="dFixedAvg"></div></div>
+        <div class="card c-orange"><div class="card-ico">🎲</div><div class="card-lbl">Despesas Variáveis</div><div class="card-val" id="dVar" style="color:var(--accent3)">R$ 0</div><div class="card-sub2">competência do mês</div><div class="card-avg" id="dVarAvg"></div></div>
       </div>
       <div class="charts2">
         <div class="chart-card"><div class="chart-title">Despesas por Categoria</div><div class="chart-wrap"><canvas id="catChart"></canvas></div></div>
@@ -603,14 +605,37 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 <!-- BUDGET MODAL -->
 <div class="modal-ov" id="budModal" onclick="if(event.target===this)closeBudgetModal()">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-title"><span>Definir Meta</span><button class="btn-icon" onclick="closeBudgetModal()" style="font-size:17px">✕</button></div>
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title"><span>Definir Meta de Orçamento</span><button class="btn-icon" onclick="closeBudgetModal()" style="font-size:17px">✕</button></div>
     <div class="form-group"><label class="form-label">Categoria</label>
-      <select class="form-input" id="budCat">
+      <select class="form-input" id="budCat" onchange="updateBudgetAvg()">
         <option value="">Selecione...</option>
       </select>
     </div>
-    <div class="form-group"><label class="form-label">Limite Mensal (R$)</label><input class="form-input" type="number" id="budLimit" placeholder="0,00" step="0.01" min="0"></div>
+    <!-- CATEGORY AVERAGE INFO -->
+    <div id="budAvgInfo" style="display:none;margin-bottom:14px;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+      <div style="background:var(--surface2);padding:10px 14px;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);font-weight:600">Histórico desta categoria</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0">
+        <div style="padding:12px 14px;border-right:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Média 3 meses</div>
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent4)" id="budAvg3">—</div>
+        </div>
+        <div style="padding:12px 14px;border-right:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Média 6 meses</div>
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--accent4)" id="budAvg6">—</div>
+        </div>
+        <div style="padding:12px 14px">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Maior gasto</div>
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--red)" id="budAvgMax">—</div>
+        </div>
+      </div>
+      <div id="budAvgHint" style="padding:8px 14px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);background:var(--surface2)"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Limite Mensal (R$)</label>
+      <input class="form-input" type="number" id="budLimit" placeholder="0,00" step="0.01" min="0" oninput="updateBudgetLimitHint()">
+      <div id="budLimitHint" style="font-size:11px;color:var(--text3);margin-top:6px;min-height:16px"></div>
+    </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeBudgetModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveBudget()">Salvar Meta</button>
@@ -932,6 +957,53 @@ function txItem(t){
   return `<div class="tx-item"><div class="tx-dot" style="background:${catColor(t.category)}"></div><div><div class="tx-name">${t.desc}</div><div class="tx-meta">${fmtDate(t.date)} · ${catIcon(t.category)} ${t.category||'—'} · ${PAY_LABEL[t.payment]||'—'} ${st} ${inst} ${tp}</div></div><div class="tx-amt ${t.type}">${t.type==='expense'?'−':'+'}${fmtBRL(t.value)}</div><div style="display:flex;gap:3px"><button class="btn-icon" onclick="openTxModal('${t.id}')" title="Editar">✏️</button><button class="btn-icon" onclick="deleteTx('${t.id}')" title="Excluir">🗑️</button></div></div>`;
 }
 
+// ===== AVERAGE HELPERS =====
+// Returns average monthly value for a filter over the last N months (excluding current month)
+function calcAvgMonths(n, filterFn){
+  const results=[];
+  for(let i=1;i<=n;i++){
+    let m=curMonth-i, y=curYear;
+    if(m<0){m+=12;y--;}
+    const monthTxs=userData.transactions.filter(t=>{
+      const dt=new Date(t.date+'T00:00:00');
+      return dt.getMonth()===m && dt.getFullYear()===y;
+    });
+    const val=monthTxs.filter(filterFn).reduce((s,t)=>s+t.value,0);
+    if(val>0) results.push(val); // only count months with data
+  }
+  return results.length?results.reduce((s,v)=>s+v,0)/results.length:0;
+}
+
+// Returns annual average (12 months of current year, excluding current month if no data)
+function calcAnnualAvg(filterFn){
+  const months=[];
+  for(let m=0;m<12;m++){
+    // skip future months and current month
+    if(curYear===new Date().getFullYear() && m>=curMonth) continue;
+    const monthTxs=userData.transactions.filter(t=>{
+      const dt=new Date(t.date+'T00:00:00');
+      return dt.getMonth()===m && dt.getFullYear()===curYear;
+    });
+    const val=monthTxs.filter(filterFn).reduce((s,t)=>s+t.value,0);
+    months.push(val);
+  }
+  const withData=months.filter(v=>v>0);
+  return withData.length?withData.reduce((s,v)=>s+v,0)/withData.length:0;
+}
+
+function avgHtml(current, avg, lbl){
+  if(!avg) return '';
+  const diff=current-avg;
+  const pct=avg>0?Math.abs(diff/avg*100):0;
+  let arrow='', cls='avg-eq', txt='';
+  if(Math.abs(diff)>0.5){
+    arrow=diff>0?'↑':'↓';
+    cls=diff>0?'avg-up':'avg-down';
+    txt=`${arrow} ${pct.toFixed(0)}% vs média`;
+  } else { txt='= na média'; }
+  return `<span class="${cls}">${arrow}</span> Média anual: ${fmtBRL(avg)} <span style="opacity:.7">(${txt})</span>`;
+}
+
 // DASHBOARD FILTER
 let dashFilter='all';
 window.setDashFilter=function(f){
@@ -966,6 +1038,25 @@ function renderDashboard(){
   $('dCard').textContent=fmtBRL(card); $('dCardCt').textContent=`${txs.filter(t=>t.type==='expense'&&t.payment==='card').length} compras`;
   $('dInst').textContent=fmtBRL(inst); $('dInstCt').textContent=`${txs.filter(t=>t.installment&&t.type==='expense').length} parcelas`;
   $('dFixed').textContent=fmtBRL(fixed); $('dVar').textContent=fmtBRL(variable);
+
+  // Annual averages for each card
+  const avgInc =calcAnnualAvg(t=>t.type==='income');
+  const avgExp =calcAnnualAvg(t=>t.type==='expense');
+  const avgBal =calcAnnualAvg(t=>t.type==='income') - calcAnnualAvg(t=>t.type==='expense');
+  const avgCard=calcAnnualAvg(t=>t.type==='expense'&&t.payment==='card');
+  const avgInst=calcAnnualAvg(t=>t.installment&&t.type==='expense');
+  const avgFix =calcAnnualAvg(t=>t.type==='expense'&&t.expenseType==='fixed');
+  const avgVar =calcAnnualAvg(t=>t.type==='expense'&&t.expenseType==='variable');
+
+  const setAvg=(id, cur, avg)=>{ const el=$(id); if(el) el.innerHTML=avg?avgHtml(cur,avg,''):``; };
+  setAvg('dIncAvg',   inc,    avgInc);
+  setAvg('dExpAvg',   exp,    avgExp);
+  setAvg('dBalAvg',   bal,    avgBal!==0?Math.abs(avgBal):0);
+  setAvg('dCardAvg',  card,   avgCard);
+  setAvg('dInstAvg',  inst,   avgInst);
+  setAvg('dFixedAvg', fixed,  avgFix);
+  setAvg('dVarAvg',   variable,avgVar);
+
   renderRecentList();
 
   // CAT CHART with value + %
@@ -1064,10 +1155,93 @@ function renderInstallments(){
 }
 
 // BUDGET
-window.openBudgetModal=function(){ $('budModal').classList.add('open'); };
+window.openBudgetModal=function(){
+  $('budModal').classList.add('open');
+  $('budAvgInfo').style.display='none';
+  $('budLimitHint').textContent='';
+  $('budLimit').value='';
+};
 window.closeBudgetModal=function(){ $('budModal').classList.remove('open'); };
+
+window.updateBudgetAvg=function(){
+  const cat=$('budCat').value;
+  if(!cat){ $('budAvgInfo').style.display='none'; return; }
+
+  // Calculate averages for this category — last 3 and 6 months, max
+  function catAvg(n){
+    const vals=[];
+    for(let i=1;i<=n;i++){
+      let m=curMonth-i, y=curYear;
+      if(m<0){m+=12;y--;}
+      const val=userData.transactions.filter(t=>{
+        const dt=new Date(t.date+'T00:00:00');
+        return dt.getMonth()===m&&dt.getFullYear()===y&&t.category===cat&&t.type==='expense';
+      }).reduce((s,t)=>s+t.value,0);
+      if(val>0) vals.push(val);
+    }
+    return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:0;
+  }
+  // simpler max calculation
+  const monthlyMap={};
+  userData.transactions.filter(t=>t.category===cat&&t.type==='expense').forEach(t=>{
+    const k=t.date.substr(0,7);
+    monthlyMap[k]=(monthlyMap[k]||0)+t.value;
+  });
+  const monthlyVals=Object.values(monthlyMap);
+  const maxVal=monthlyVals.length?Math.max(...monthlyVals):0;
+  const avg3=catAvg(3), avg6=catAvg(6);
+
+  if(!avg3&&!avg6&&!maxVal){ $('budAvgInfo').style.display='none'; return; }
+
+  $('budAvg3').textContent=avg3?fmtBRL(avg3):'Sem dados';
+  $('budAvg6').textContent=avg6?fmtBRL(avg6):'Sem dados';
+  $('budAvgMax').textContent=maxVal?fmtBRL(maxVal):'—';
+
+  let hint='';
+  const ref=avg3||avg6;
+  if(ref){
+    const existing=userData.budgets[cat];
+    if(existing){
+      hint=`Meta atual: ${fmtBRL(existing)}`;
+      $('budLimit').value=existing;
+    } else {
+      hint=`Sugestão baseada na média: ${fmtBRL(Math.round(ref/10)*10)}`;
+    }
+  }
+  $('budAvgHint').textContent=hint;
+  $('budAvgInfo').style.display='block';
+  updateBudgetLimitHint();
+};
+
+window.updateBudgetLimitHint=function(){
+  const cat=$('budCat').value;
+  const lim=parseFloat($('budLimit').value)||0;
+  const hintEl=$('budLimitHint');
+  if(!cat||!lim){ hintEl.textContent=''; return; }
+
+  const monthlyMap={};
+  userData.transactions.filter(t=>t.category===cat&&t.type==='expense').forEach(t=>{
+    const k=t.date.substr(0,7);
+    monthlyMap[k]=(monthlyMap[k]||0)+t.value;
+  });
+  const vals=Object.values(monthlyMap);
+  if(!vals.length){ hintEl.textContent=''; return; }
+  const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
+  const diff=lim-avg;
+  const pct=avg>0?Math.abs(diff/avg*100):0;
+
+  if(diff>0){
+    hintEl.innerHTML=`<span style="color:#86efac">✓ ${pct.toFixed(0)}% acima da sua média — meta confortável</span>`;
+  } else if(diff<0){
+    hintEl.innerHTML=`<span style="color:var(--yellow)">⚠ ${pct.toFixed(0)}% abaixo da sua média — meta desafiadora</span>`;
+  } else {
+    hintEl.innerHTML=`<span style="color:var(--text3)">= Igual à sua média histórica</span>`;
+  }
+};
+
 window.saveBudget=async function(){
   const cat=$('budCat').value, lim=parseFloat($('budLimit').value);
+  if(!cat){ toast('⚠️','Selecione uma categoria.'); return; }
   if(!lim||isNaN(lim)){ toast('⚠️','Informe um valor.'); return; }
   userData.budgets[cat]=lim; await saveSettings(); closeBudgetModal(); renderBudget(); toast('🎯','Meta salva!');
 };
