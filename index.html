@@ -122,7 +122,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .tx-list{max-height:430px;overflow-y:auto}
 .tx-list::-webkit-scrollbar{width:3px}
 .tx-list::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
-.tx-item{display:grid;grid-template-columns:8px 1fr auto auto;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--border);transition:background .15s}
+.tx-item{display:grid;grid-template-columns:18px 1fr auto auto;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--border);transition:background .15s}
 .tx-item:last-child{border-bottom:none}
 .tx-item:hover{background:var(--surface2)}
 .tx-dot{width:8px;height:8px;border-radius:50%}
@@ -203,7 +203,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .inst-table td{padding:11px 16px;border-bottom:1px solid var(--border)}
 .inst-table tr:last-child td{border-bottom:none}
 .inst-table tr:hover td{background:var(--surface2)}
-/* SETTINGS / CATEGORIES */
+/* CHECKBOX / BULK SELECT */
+.tx-item-wrap{position:relative}
+.tx-chk{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.tx-item.selected{background:rgba(94,234,212,.06);border-left:2px solid var(--accent)}
+.bulk-bar-active{display:flex!important}
 .cat-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:12px;font-weight:500;cursor:default;transition:all .15s}
 .cat-chip:hover{border-color:var(--border2)}
 .cat-chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -388,10 +392,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <!-- TRANSACTIONS -->
     <div class="page" id="page-transactions">
       <div class="page-hdr">
-        <div><div class="page-title">Lançamentos</div><div class="page-sub">Todas as movimentações do mês</div></div>
+        <div><div class="page-title">Lançamentos</div><div class="page-sub">Movimentações por mês de competência</div></div>
         <button class="btn btn-primary" onclick="openTxModal()">+ Novo Lançamento</button>
       </div>
       <div class="sec-card">
+        <!-- SEARCH + TYPE FILTERS -->
         <div class="filter-bar">
           <div class="search-wrap"><span class="search-ico">🔍</span><input class="search-input" id="txSearch" placeholder="Buscar..." oninput="renderTxPage()"></div>
           <button class="filter-btn active" onclick="setTxFilter('all',this)">Todos</button>
@@ -400,7 +405,33 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
           <button class="filter-btn" onclick="setTxFilter('fixed',this)">Fixo</button>
           <button class="filter-btn" onclick="setTxFilter('variable',this)">Variável</button>
           <button class="filter-btn" onclick="setTxFilter('card',this)">Cartão</button>
+          <button class="filter-btn" onclick="setTxFilter('pix',this)">Pix</button>
           <button class="filter-btn" onclick="setTxFilter('installment',this)">Parcelado</button>
+        </div>
+        <!-- STATUS + CATEGORY FILTERS -->
+        <div class="filter-bar" style="border-top:1px solid var(--border);padding-top:10px;gap:8px">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:10px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase">Status:</span>
+            <button class="filter-btn active" id="sfAll" onclick="setStatusFilter('all',this)">Todos</button>
+            <button class="filter-btn" id="sfPaid" onclick="setStatusFilter('paid',this)">✓ Pago</button>
+            <button class="filter-btn" id="sfPending" onclick="setStatusFilter('pending',this)">⏳ Pendente</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:180px">
+            <span style="font-size:10px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Categoria:</span>
+            <select class="form-input" id="txCatFilter" onchange="renderTxPage()" style="padding:4px 10px;font-size:11px;height:28px;flex:1">
+              <option value="">Todas</option>
+            </select>
+          </div>
+        </div>
+        <!-- BULK ACTION BAR (shows when items selected) -->
+        <div id="bulkBar" style="display:none;padding:10px 18px;background:rgba(94,234,212,.06);border-bottom:1px solid rgba(94,234,212,.2);display:none;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:12.5px;font-weight:500" id="bulkCount">0 selecionados</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑️ Apagar selecionados</button>
+          <button class="btn btn-ghost btn-sm" onclick="markSelectedPaid()">✓ Marcar como Pago</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearSelection()">✕ Cancelar</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:auto">
+            <input type="checkbox" id="selectAllChk" onchange="toggleSelectAll(this.checked)"> Selecionar todos
+          </label>
         </div>
         <div class="tx-list" id="txList" style="max-height:600px"></div>
       </div>
@@ -565,35 +596,44 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="form-group" style="margin:0"><label class="form-label">Valor (R$) *</label><input class="form-input" type="number" id="txVal" placeholder="0,00" step="0.01" min="0"></div>
     </div>
     <div class="form-row">
-      <div class="form-group" style="margin:0"><label class="form-label">Data *</label><input class="form-input" type="date" id="txDate"></div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Data da Compra *</label>
+        <input class="form-input" type="date" id="txDate" oninput="suggestCompetency()">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Mês Competência *
+          <span style="font-weight:400;color:var(--text3);font-size:9.5px;margin-left:4px">= mês da fatura</span>
+        </label>
+        <input class="form-input" type="month" id="txCompetency">
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-group" style="margin:0"><label class="form-label">Categoria *</label>
-        <select class="form-input" id="txCat">
-          <option value="">Selecione...</option>
-        </select>
+        <select class="form-input" id="txCat"><option value="">Selecione...</option></select>
+      </div>
+      <div class="form-group" style="margin:0"><label class="form-label">Forma de Pagamento</label>
+        <select class="form-input" id="txPay" onchange="suggestCompetency()"><option value="card">Cartão de Crédito</option><option value="pix">Pix</option><option value="debit">Débito</option><option value="cash">Dinheiro</option><option value="transfer">Transferência</option></select>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group" style="margin:0"><label class="form-label">Tipo de Despesa</label>
         <select class="form-input" id="txExpType"><option value="variable">Variável</option><option value="fixed">Fixo</option></select>
       </div>
-      <div class="form-group" style="margin:0"><label class="form-label">Forma de Pagamento</label>
-        <select class="form-input" id="txPay"><option value="card">Cartão de Crédito</option><option value="pix">Pix</option><option value="debit">Débito</option><option value="cash">Dinheiro</option><option value="transfer">Transferência</option></select>
-      </div>
-    </div>
-    <div class="form-row">
       <div class="form-group" style="margin:0"><label class="form-label">Status</label>
         <select class="form-input" id="txStatus"><option value="paid">Pago</option><option value="pending">Pendente</option></select>
       </div>
-      <div class="form-group" style="margin:0"><label class="form-label">Parcelado?</label>
-        <select class="form-input" id="txIsInst" onchange="toggleParcel()"><option value="no">Não</option><option value="yes">Sim</option></select>
-      </div>
+    </div>
+    <!-- Competency hint -->
+    <div id="compHint" style="display:none;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:8px 13px;font-size:11.5px;color:var(--accent4);margin-bottom:10px"></div>
+    <div class="form-group">
+      <label class="form-label">Parcelado?</label>
+      <select class="form-input" id="txIsInst" onchange="toggleParcel()"><option value="no">Não</option><option value="yes">Sim</option></select>
     </div>
     <div class="parcel-sec" id="parcelSec">
       <div class="parcel-hint">💡 Informe a parcela atual. As próximas serão criadas automaticamente nos meses seguintes.</div>
-      <div class="form-row-3">
+      <div class="form-row">
         <div class="form-group" style="margin:0"><label class="form-label">Parcela Atual</label><input class="form-input" type="number" id="txPC" placeholder="1" min="1"></div>
         <div class="form-group" style="margin:0"><label class="form-label">Total de Parcelas</label><input class="form-input" type="number" id="txPT" placeholder="12" min="1"></div>
-        <div class="form-group" style="margin:0"><label class="form-label">Mês Competência</label><input class="form-input" type="month" id="txComp"></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -764,6 +804,7 @@ function populateCatSelects(){
   if(txCat){ const cur=txCat.value; txCat.innerHTML=`<option value="">Selecione...</option><optgroup label="Despesas">${exp.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('')}</optgroup><optgroup label="Receitas">${inc.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('')}</optgroup>`; if(cur)txCat.value=cur; }
   const bCat=$('budCat');
   if(bCat){ const cur=bCat.value; bCat.innerHTML=exp.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join(''); if(cur)bCat.value=cur; }
+  populateCatFilter();
 }
 
 // FIRESTORE
@@ -867,7 +908,14 @@ function setupUI(){
 // MONTH NAV
 window.changeMonth=function(d){ curMonth+=d; if(curMonth>11){curMonth=0;curYear++;} if(curMonth<0){curMonth=11;curYear--;} updateMonthLabel(); renderAll(); };
 function updateMonthLabel(){ $('mLabel').textContent=`${MONTHS_S[curMonth]} ${curYear}`; $('dashSub').textContent=`Visão geral de ${MONTHS[curMonth]} ${curYear}`; }
-function getMonthTx(){ return userData.transactions.filter(t=>{ const dt=new Date(t.date+'T00:00:00'); return dt.getMonth()===curMonth&&dt.getFullYear()===curYear; }); }
+function getMonthTx(){
+  return userData.transactions.filter(t=>{
+    // Use competency if set, otherwise fall back to date
+    const compStr = t.competency || t.date.substr(0,7);
+    const [cy, cm] = compStr.split('-').map(Number);
+    return cm-1 === curMonth && cy === curYear;
+  });
+}
 
 // NAVIGATION
 window.gotoPage=function(name){
@@ -886,19 +934,65 @@ window.gotoPage=function(name){
 };
 
 // TX MODAL
+window.suggestCompetency=function(){
+  const date=$('txDate').value;
+  const pay=$('txPay').value;
+  if(!date) return;
+  const dt=new Date(date+'T00:00:00');
+  let compYear=dt.getFullYear(), compMonth=dt.getMonth();
+  // For card: if date is after the 25th, suggest next month as competency
+  if(pay==='card' && dt.getDate()>=25){
+    compMonth+=1;
+    if(compMonth>11){compMonth=0;compYear++;}
+  }
+  const compStr=`${compYear}-${String(compMonth+1).padStart(2,'0')}`;
+  $('txCompetency').value=compStr;
+
+  // Show hint for card
+  if(pay==='card'){
+    const hint=$('compHint');
+    hint.style.display='block';
+    if(dt.getDate()>=25){
+      hint.innerHTML=`💡 Compra após dia 25 — fatura de <b>${MONTHS[compMonth]} ${compYear}</b> sugerida. Ajuste se necessário.`;
+    } else {
+      hint.innerHTML=`💳 Cartão de crédito — fatura de <b>${MONTHS[compMonth]} ${compYear}</b>. Altere se seu cartão já fechou.`;
+    }
+  } else {
+    $('compHint').style.display='none';
+  }
+};
+
 window.openTxModal=function(id=null){
   txModalMode=id?'edit':'new'; editingId=id; modalTxType='expense';
   const today=new Date(),yy=today.getFullYear(),mm=String(today.getMonth()+1).padStart(2,'0'),dd=String(today.getDate()).padStart(2,'0');
   ['txDesc','txVal'].forEach(i=>$(i).value='');
-  $('txDate').value=`${yy}-${mm}-${dd}`; $('txCat').value=''; $('txExpType').value='variable';
+  $('txDate').value=`${yy}-${mm}-${dd}`;
+  $('txCompetency').value=`${yy}-${mm}`;
+  $('txCat').value=''; $('txExpType').value='variable';
   $('txPay').value='card'; $('txStatus').value='paid'; $('txIsInst').value='no';
-  $('txPC').value=''; $('txPT').value=''; $('txComp').value=`${yy}-${mm}`;
+  $('txPC').value=''; $('txPT').value='';
   $('parcelSec').style.display='none';
+  $('compHint').style.display='none';
   document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector('.type-btn.expense').classList.add('active');
   $('txModalTitle').textContent=id?'Editar Lançamento':'Novo Lançamento';
   $('txSaveBtn').textContent='Salvar';
-  if(id){ const tx=userData.transactions.find(t=>t.id===id); if(tx){ modalTxType=tx.type; document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active')); document.querySelector(`.type-btn.${tx.type}`).classList.add('active'); $('txDesc').value=tx.desc; $('txVal').value=tx.value; $('txDate').value=tx.date; $('txCat').value=tx.category||''; $('txExpType').value=tx.expenseType||'variable'; $('txPay').value=tx.payment||'card'; $('txStatus').value=tx.status||'paid'; $('txIsInst').value=tx.installment?'yes':'no'; if(tx.installment){ $('parcelSec').style.display='block'; $('txPC').value=tx.installCurrent||''; $('txPT').value=tx.installTotal||''; $('txComp').value=tx.competency||`${yy}-${mm}`; } } }
+  if(id){
+    const tx=userData.transactions.find(t=>t.id===id);
+    if(tx){
+      modalTxType=tx.type;
+      document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelector(`.type-btn.${tx.type}`).classList.add('active');
+      $('txDesc').value=tx.desc; $('txVal').value=tx.value; $('txDate').value=tx.date;
+      $('txCompetency').value=tx.competency||tx.date.substr(0,7);
+      $('txCat').value=tx.category||''; $('txExpType').value=tx.expenseType||'variable';
+      $('txPay').value=tx.payment||'card'; $('txStatus').value=tx.status||'paid';
+      $('txIsInst').value=tx.installment?'yes':'no';
+      if(tx.installment){ $('parcelSec').style.display='block'; $('txPC').value=tx.installCurrent||''; $('txPT').value=tx.installTotal||''; }
+    }
+  } else {
+    suggestCompetency();
+  }
   $('txModal').classList.add('open');
 };
 window.closeTxModal=function(){ $('txModal').classList.remove('open'); };
@@ -906,25 +1000,28 @@ window.setTxType=function(type,btn){ modalTxType=type; document.querySelectorAll
 window.toggleParcel=function(){ $('parcelSec').style.display=$('txIsInst').value==='yes'?'block':'none'; };
 
 window.saveTx=async function(){
-  const desc=$('txDesc').value.trim(),value=parseFloat($('txVal').value),date=$('txDate').value,category=$('txCat').value,expenseType=$('txExpType').value,payment=$('txPay').value,status=$('txStatus').value,isInst=$('txIsInst').value==='yes';
+  const desc=$('txDesc').value.trim(),value=parseFloat($('txVal').value),
+        date=$('txDate').value, competency=$('txCompetency').value,
+        category=$('txCat').value,expenseType=$('txExpType').value,
+        payment=$('txPay').value,status=$('txStatus').value,isInst=$('txIsInst').value==='yes';
   if(!desc){ toast('⚠️','Informe a descrição.'); return; }
   if(!value||value<=0){ toast('⚠️','Informe um valor válido.'); return; }
   if(!date){ toast('⚠️','Informe a data.'); return; }
+  if(!competency){ toast('⚠️','Informe o mês de competência.'); return; }
   if(!category){ toast('⚠️','Selecione uma categoria.'); return; }
   $('txSaveBtn').disabled=true; $('txSaveBtn').textContent='Salvando...';
   try{
     if(txModalMode==='edit'&&editingId){
       const idx=userData.transactions.findIndex(t=>t.id===editingId);
       if(idx!==-1){
-        const updated={...userData.transactions[idx],desc,value,date,category,expenseType,payment,status,type:modalTxType,installment:isInst};
-        if(isInst){ updated.installCurrent=parseInt($('txPC').value)||1; updated.installTotal=parseInt($('txPT').value)||1; updated.competency=$('txComp').value; }
+        const updated={...userData.transactions[idx],desc,value,date,competency,category,expenseType,payment,status,type:modalTxType,installment:isInst};
+        if(isInst){ updated.installCurrent=parseInt($('txPC').value)||1; updated.installTotal=parseInt($('txPT').value)||1; }
         await fsUpdateTx(editingId,updated); userData.transactions[idx]=updated; toast('✏️','Lançamento atualizado!');
       }
     }else{
       if(isInst){
         const cur=parseInt($('txPC').value)||1,total=parseInt($('txPT').value)||1;
-        const comp=$('txComp').value||date.substr(0,7);
-        const[compY,compM]=comp.split('-').map(Number);
+        const[compY,compM]=competency.split('-').map(Number);
         const groupId=genId();
         for(let i=cur;i<=total;i++){
           const mOff=i-cur,tM=(compM-1+mOff)%12,tY=compY+Math.floor((compM-1+mOff)/12);
@@ -934,7 +1031,7 @@ window.saveTx=async function(){
         }
         toast('🔄',`${total-cur+1} parcela(s) criada(s)!`);
       }else{
-        const tx={desc,value,date,category,expenseType,payment,status,type:modalTxType,installment:false};
+        const tx={desc,value,date,competency,category,expenseType,payment,status,type:modalTxType,installment:false};
         const newId=await fsAddTx(tx); userData.transactions.push({id:newId,...tx}); toast('✅','Lançamento salvo!');
       }
     }
@@ -1120,18 +1217,134 @@ function renderDashboard(){
 }
 
 // TX PAGE
-window.setTxFilter=function(f,btn){ txFilterState=f; document.querySelectorAll('#page-transactions .filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderTxPage(); };
+// TX PAGE STATE
+let statusFilter='all';
+let selectedTxIds=new Set();
+
+window.setStatusFilter=function(f,btn){
+  statusFilter=f;
+  document.querySelectorAll('#page-transactions [id^="sf"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTxPage();
+};
+
+function populateCatFilter(){
+  const sel=$('txCatFilter'); if(!sel) return;
+  const cur=sel.value;
+  const usedCats=[...new Set(userData.transactions.map(t=>t.category).filter(Boolean))].sort();
+  sel.innerHTML=`<option value="">Todas as categorias</option>`+usedCats.map(c=>`<option value="${c}">${catIcon(c)} ${c}</option>`).join('');
+  if(cur) sel.value=cur;
+}
+
+function updateBulkBar(){
+  const bar=$('bulkBar');
+  if(!bar) return;
+  const n=selectedTxIds.size;
+  if(n>0){
+    bar.style.display='flex';
+    $('bulkCount').textContent=`${n} selecionado${n!==1?'s':''}`;
+  } else {
+    bar.style.display='none';
+  }
+}
+
+window.toggleTxSelect=function(id, chk){
+  if(chk.checked) selectedTxIds.add(id);
+  else selectedTxIds.delete(id);
+  // highlight row
+  const row=document.querySelector(`[data-txid="${id}"]`);
+  if(row) row.classList.toggle('selected', chk.checked);
+  updateBulkBar();
+};
+
+window.toggleSelectAll=function(checked){
+  document.querySelectorAll('.tx-chk').forEach(chk=>{
+    chk.checked=checked;
+    const id=chk.dataset.id;
+    if(checked) selectedTxIds.add(id);
+    else selectedTxIds.delete(id);
+    const row=document.querySelector(`[data-txid="${id}"]`);
+    if(row) row.classList.toggle('selected', checked);
+  });
+  updateBulkBar();
+};
+
+window.clearSelection=function(){
+  selectedTxIds.clear();
+  document.querySelectorAll('.tx-chk').forEach(c=>c.checked=false);
+  document.querySelectorAll('.tx-item.selected').forEach(r=>r.classList.remove('selected'));
+  if($('selectAllChk')) $('selectAllChk').checked=false;
+  updateBulkBar();
+};
+
+window.deleteSelected=async function(){
+  if(!selectedTxIds.size) return;
+  if(!confirm(`Apagar ${selectedTxIds.size} lançamento(s)?`)) return;
+  const ids=[...selectedTxIds];
+  for(const id of ids){
+    try{ await fsDeleteTx(id); userData.transactions=userData.transactions.filter(t=>t.id!==id); }catch(e){}
+  }
+  selectedTxIds.clear();
+  renderAll(); toast('🗑️',`${ids.length} lançamento(s) removido(s)!`);
+};
+
+window.markSelectedPaid=async function(){
+  if(!selectedTxIds.size) return;
+  for(const id of selectedTxIds){
+    const idx=userData.transactions.findIndex(t=>t.id===id);
+    if(idx!==-1){
+      userData.transactions[idx].status='paid';
+      try{ await fsUpdateTx(id,{status:'paid'}); }catch(e){}
+    }
+  }
+  selectedTxIds.clear();
+  renderAll(); toast('✅','Lançamentos marcados como pagos!');
+};
+
+window.setTxFilter=function(f,btn){
+  txFilterState=f;
+  document.querySelectorAll('#page-transactions .filter-bar:first-child .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTxPage();
+};
+
 function renderTxPage(){
+  populateCatFilter();
   const search=($('txSearch')?.value||'').toLowerCase();
+  const catF=($('txCatFilter')?.value||'');
+  // Use ALL transactions filtered by competency month
   let txs=getMonthTx().sort((a,b)=>b.date.localeCompare(a.date));
-  if(txFilterState==='income')txs=txs.filter(t=>t.type==='income');
-  else if(txFilterState==='expense')txs=txs.filter(t=>t.type==='expense');
-  else if(txFilterState==='fixed')txs=txs.filter(t=>t.expenseType==='fixed'&&t.type==='expense');
-  else if(txFilterState==='variable')txs=txs.filter(t=>t.expenseType==='variable'&&t.type==='expense');
-  else if(txFilterState==='card')txs=txs.filter(t=>t.payment==='card');
-  else if(txFilterState==='installment')txs=txs.filter(t=>t.installment);
-  if(search)txs=txs.filter(t=>(t.desc+' '+t.category).toLowerCase().includes(search));
-  $('txList').innerHTML=txs.length?txs.map(txItem).join(''):`<div class="empty-st"><div class="empty-ico">🔍</div><div class="empty-txt">Nenhum lançamento encontrado.</div></div>`;
+
+  if(txFilterState==='income') txs=txs.filter(t=>t.type==='income');
+  else if(txFilterState==='expense') txs=txs.filter(t=>t.type==='expense');
+  else if(txFilterState==='fixed') txs=txs.filter(t=>t.expenseType==='fixed'&&t.type==='expense');
+  else if(txFilterState==='variable') txs=txs.filter(t=>t.expenseType==='variable'&&t.type==='expense');
+  else if(txFilterState==='card') txs=txs.filter(t=>t.payment==='card');
+  else if(txFilterState==='pix') txs=txs.filter(t=>t.payment==='pix');
+  else if(txFilterState==='installment') txs=txs.filter(t=>t.installment);
+
+  if(statusFilter==='paid') txs=txs.filter(t=>t.status==='paid');
+  else if(statusFilter==='pending') txs=txs.filter(t=>t.status==='pending');
+
+  if(catF) txs=txs.filter(t=>t.category===catF);
+  if(search) txs=txs.filter(t=>(t.desc+' '+t.category).toLowerCase().includes(search));
+
+  $('txList').innerHTML=txs.length?txs.map(t=>{
+    const isSelected=selectedTxIds.has(t.id);
+    const inst=t.installment?`<span class="badge b-purple">📦 ${t.installCurrent||'?'}/${t.installTotal||'?'}</span>`:'';
+    const tp=t.type==='expense'?(t.expenseType==='fixed'?'<span class="badge b-info">Fixo</span>':'<span class="badge b-orange">Variável</span>'):'';
+    const st=t.status==='paid'?'<span class="badge b-ok">Pago</span>':'<span class="badge b-warn">Pendente</span>';
+    const compBadge=t.competency&&t.competency!==t.date.substr(0,7)?`<span class="badge" style="background:rgba(251,191,36,.12);color:var(--yellow)">Comp: ${t.competency}</span>`:'';
+    return `<div class="tx-item${isSelected?' selected':''}" data-txid="${t.id}">
+      <input type="checkbox" class="tx-chk" data-id="${t.id}" ${isSelected?'checked':''} onchange="toggleTxSelect('${t.id}',this)">
+      <div><div class="tx-name">${t.desc}</div>
+      <div class="tx-meta">${fmtDate(t.date)} · ${catIcon(t.category)} ${t.category||'—'} · ${PAY_LABEL[t.payment]||'—'} ${st} ${inst} ${tp} ${compBadge}</div></div>
+      <div class="tx-amt ${t.type}">${t.type==='expense'?'−':'+'}${fmtBRL(t.value)}</div>
+      <div style="display:flex;gap:3px"><button class="btn-icon" onclick="openTxModal('${t.id}')" title="Editar">✏️</button><button class="btn-icon" onclick="deleteTx('${t.id}')" title="Excluir">🗑️</button></div>
+    </div>`;
+  }).join(''):`<div class="empty-st"><div class="empty-ico">🔍</div><div class="empty-txt">Nenhum lançamento encontrado.</div></div>`;
+
+  updateBulkBar();
 }
 
 // INSTALLMENTS
