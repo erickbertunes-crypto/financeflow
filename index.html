@@ -229,6 +229,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .import-field{background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;width:100%}
 .import-field:focus{border-color:var(--accent)}
 .import-field option{background:var(--surface2)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 /* CHECKBOX / BULK SELECT */
 .tx-item-wrap{position:relative}
 .tx-chk{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
@@ -387,6 +388,22 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="page-hdr">
         <div><div class="page-title">Dashboard</div><div class="page-sub" id="dashSub">Visão geral do mês</div></div>
         <button class="btn btn-primary" onclick="openTxModal()">+ Novo Lançamento</button>
+      </div>
+      <!-- AI INSIGHTS PANEL -->
+      <div id="insightsPanel" style="margin-bottom:18px;border-radius:var(--radius);overflow:hidden;border:1px solid rgba(94,234,212,.2);background:linear-gradient(135deg,rgba(94,234,212,.06),rgba(96,165,250,.04))">
+        <div style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(94,234,212,.12)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite"></div>
+            <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--accent)">Análise Financeira Personalizada</span>
+          </div>
+          <button onclick="refreshInsights()" id="insightsRefreshBtn" style="background:none;border:1px solid rgba(94,234,212,.3);border-radius:8px;padding:4px 10px;color:var(--accent);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">↻ Atualizar</button>
+        </div>
+        <div id="insightsContent" style="padding:16px 18px;min-height:80px;display:flex;align-items:center;justify-content:center">
+          <div style="text-align:center;color:var(--text3);font-size:13px">
+            <div style="font-size:24px;margin-bottom:8px">🤖</div>
+            Clique em <b style="color:var(--accent)">↻ Atualizar</b> para gerar sua análise personalizada
+          </div>
+        </div>
       </div>
       <div class="cg4">
         <div class="card c-teal"><div class="card-ico">💰</div><div class="card-lbl">Receita Total</div><div class="card-val pos" id="dInc">R$ 0</div><div class="card-sub2" id="dIncCt">0 lançamentos</div><div class="card-avg" id="dIncAvg"></div></div>
@@ -1049,7 +1066,7 @@ function setupUI(){
 }
 
 // MONTH NAV
-window.changeMonth=function(d){ curMonth+=d; if(curMonth>11){curMonth=0;curYear++;} if(curMonth<0){curMonth=11;curYear--;} updateMonthLabel(); renderAll(); };
+window.changeMonth=function(d){ curMonth+=d; if(curMonth>11){curMonth=0;curYear++;} if(curMonth<0){curMonth=11;curYear--;} updateMonthLabel(); renderAll(); maybeAutoInsights(); };
 function updateMonthLabel(){ $('mLabel').textContent=`${MONTHS_S[curMonth]} ${curYear}`; $('dashSub').textContent=`Visão geral de ${MONTHS[curMonth]} ${curYear}`; }
 function getMonthTx(){
   return userData.transactions.filter(t=>{
@@ -2802,6 +2819,141 @@ window.downloadModelo=function(){
     document.head.appendChild(s);
   }
 };
+
+// ============ AI INSIGHTS ============
+let insightsCache = null;
+let insightsCacheMonth = null;
+
+window.refreshInsights = async function(){
+  const btn=$('insightsRefreshBtn');
+  const content=$('insightsContent');
+  if(!content) return;
+
+  const cacheKey=`${curYear}-${curMonth}`;
+  // Use cache if same month and already loaded
+  if(insightsCache && insightsCacheMonth===cacheKey){
+    content.innerHTML=insightsCache; return;
+  }
+
+  btn.textContent='⏳ Analisando...';
+  btn.disabled=true;
+  content.innerHTML=`<div style="text-align:center;color:var(--text3);font-size:13px"><div class="spinner" style="margin:0 auto 8px"></div>Gerando sua análise personalizada...</div>`;
+
+  try{
+    const name=curUser?.displayName||curUser?.email?.split('@')[0]||'você';
+    const txs=getMonthTx();
+    const allTxs=userData.transactions;
+    const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+    const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+    const fixed=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
+    const variable=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
+    const bal=inc-exp;
+
+    // Top categories this month
+    const catMap={};
+    txs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.value;});
+    const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    // Historical averages
+    const avgExp=calcAnnualAvg(t=>t.type==='expense');
+    const avgInc=calcAnnualAvg(t=>t.type==='income');
+
+    // Monthly trend (last 3 months)
+    const last3=[];
+    for(let i=1;i<=3;i++){
+      let m=curMonth-i,y=curYear; if(m<0){m+=12;y--;}
+      const mv=allTxs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===y&&t.type==='expense'; }).reduce((s,t)=>s+t.value,0);
+      if(mv>0) last3.push({m,y,v:mv});
+    }
+
+    const prompt=`Você é um consultor financeiro pessoal amigável e direto. Analise os dados financeiros abaixo e gere uma análise personalizada em português para ${name}.
+
+DADOS DO MÊS ATUAL (${MONTHS[curMonth]} ${curYear}):
+- Receitas: R$ ${inc.toFixed(2)}
+- Despesas totais: R$ ${exp.toFixed(2)}
+- Saldo: R$ ${bal.toFixed(2)}
+- Despesas fixas: R$ ${fixed.toFixed(2)}
+- Despesas variáveis: R$ ${variable.toFixed(2)}
+- Top categorias de gasto: ${topCats.map(([c,v])=>`${c}: R$ ${v.toFixed(2)}`).join(', ')}
+
+HISTÓRICO:
+- Média mensal de receitas (ano): R$ ${avgInc.toFixed(2)}
+- Média mensal de despesas (ano): R$ ${avgExp.toFixed(2)}
+${last3.length?`- Últimos meses de despesa: ${last3.map(m=>`R$ ${m.v.toFixed(2)}`).join(', ')}`:''} 
+
+BENCHMARKS BRASIL (use para comparações interessantes):
+- Salário médio do trabalhador brasileiro: R$ 3.200/mês
+- Gasto médio com alimentação fora de casa em SP: R$ 800-1.200/mês
+- Comprometimento saudável de renda com fixos: até 50%
+- Taxa de poupança recomendada: 10-20% da renda
+- Inflação IPCA acumulada 2024: ~4,8%
+
+INSTRUÇÕES:
+1. Comece com uma saudação curta e personalizada pelo nome
+2. Destaque 2-3 insights mais relevantes sobre os gastos deste mês
+3. Compare com médias (histórico dele e benchmarks Brasil quando pertinente)
+4. Dê 1-2 sugestões práticas e específicas (não genéricas)
+5. Termine com uma observação motivadora ou curiosidade financeira relevante
+6. Seja direto, use linguagem casual mas profissional
+7. Use emojis com moderação para tornar mais amigável
+8. Máximo 5 parágrafos curtos
+
+Responda APENAS o texto da análise, sem títulos ou markdown pesado.`;
+
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:800,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+
+    if(!res.ok){ throw new Error(`HTTP ${res.status}`); }
+    const data=await res.json();
+    const text=data.content?.[0]?.text||'';
+
+    if(!text){ throw new Error('Resposta vazia'); }
+
+    // Format into nice paragraphs
+    const paras=text.split('\n').filter(p=>p.trim());
+    const html=`<div style="font-size:13.5px;line-height:1.7;color:var(--text2)">
+      ${paras.map((p,i)=>`<p style="margin:0${i>0?';margin-top:10px':''}">${p}</p>`).join('')}
+      <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(94,234,212,.15);font-size:10px;color:var(--text3)">
+        Análise gerada por IA · ${MONTHS[curMonth]} ${curYear} · Baseada nos seus dados reais
+      </div>
+    </div>`;
+
+    insightsCache=html;
+    insightsCacheMonth=cacheKey;
+    content.innerHTML=html;
+
+  }catch(e){
+    content.innerHTML=`<div style="text-align:center;color:var(--text3);font-size:13px">
+      <div style="font-size:20px;margin-bottom:8px">⚠️</div>
+      Não foi possível gerar a análise agora.<br>
+      <span style="font-size:11px">Verifique sua conexão e tente novamente.</span>
+    </div>`;
+    console.error('insights error:',e);
+  }finally{
+    btn.textContent='↻ Atualizar';
+    btn.disabled=false;
+  }
+};
+
+// Auto-load insights when month changes if already cached or first time
+function maybeAutoInsights(){
+  const cacheKey=`${curYear}-${curMonth}`;
+  if(insightsCache && insightsCacheMonth===cacheKey){
+    const content=$('insightsContent');
+    if(content) content.innerHTML=insightsCache;
+  }
+}
 
 // KEYBOARD
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeTxModal(); closeBudgetModal(); } });
