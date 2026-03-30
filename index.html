@@ -2820,138 +2820,154 @@ window.downloadModelo=function(){
   }
 };
 
-// ============ AI INSIGHTS ============
+// ============ AI INSIGHTS (gerado localmente com os dados reais) ============
 let insightsCache = null;
 let insightsCacheMonth = null;
 
-window.refreshInsights = async function(){
+window.refreshInsights = function(){
   const btn=$('insightsRefreshBtn');
   const content=$('insightsContent');
   if(!content) return;
 
   const cacheKey=`${curYear}-${curMonth}`;
-  // Use cache if same month and already loaded
-  if(insightsCache && insightsCacheMonth===cacheKey){
-    content.innerHTML=insightsCache; return;
-  }
-
   btn.textContent='⏳ Analisando...';
   btn.disabled=true;
-  content.innerHTML=`<div style="text-align:center;color:var(--text3);font-size:13px"><div class="spinner" style="margin:0 auto 8px"></div>Gerando sua análise personalizada...</div>`;
 
-  try{
-    const name=curUser?.displayName||curUser?.email?.split('@')[0]||'você';
-    const txs=getMonthTx();
-    const allTxs=userData.transactions;
-    const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
-    const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
-    const fixed=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
-    const variable=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
-    const bal=inc-exp;
-
-    // Top categories this month
-    const catMap={};
-    txs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.value;});
-    const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
-    // Historical averages
-    const avgExp=calcAnnualAvg(t=>t.type==='expense');
-    const avgInc=calcAnnualAvg(t=>t.type==='income');
-
-    // Monthly trend (last 3 months)
-    const last3=[];
-    for(let i=1;i<=3;i++){
-      let m=curMonth-i,y=curYear; if(m<0){m+=12;y--;}
-      const mv=allTxs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===y&&t.type==='expense'; }).reduce((s,t)=>s+t.value,0);
-      if(mv>0) last3.push({m,y,v:mv});
+  // Small delay for UX feel
+  setTimeout(()=>{
+    try{
+      const html = gerarInsights();
+      insightsCache=html;
+      insightsCacheMonth=cacheKey;
+      content.innerHTML=html;
+    }catch(e){
+      content.innerHTML=`<div style="color:var(--text3);font-size:13px;text-align:center">⚠️ Sem dados suficientes para análise este mês.</div>`;
+      console.error(e);
     }
-
-    const prompt=`Você é um consultor financeiro pessoal amigável e direto. Analise os dados financeiros abaixo e gere uma análise personalizada em português para ${name}.
-
-DADOS DO MÊS ATUAL (${MONTHS[curMonth]} ${curYear}):
-- Receitas: R$ ${inc.toFixed(2)}
-- Despesas totais: R$ ${exp.toFixed(2)}
-- Saldo: R$ ${bal.toFixed(2)}
-- Despesas fixas: R$ ${fixed.toFixed(2)}
-- Despesas variáveis: R$ ${variable.toFixed(2)}
-- Top categorias de gasto: ${topCats.map(([c,v])=>`${c}: R$ ${v.toFixed(2)}`).join(', ')}
-
-HISTÓRICO:
-- Média mensal de receitas (ano): R$ ${avgInc.toFixed(2)}
-- Média mensal de despesas (ano): R$ ${avgExp.toFixed(2)}
-${last3.length?`- Últimos meses de despesa: ${last3.map(m=>`R$ ${m.v.toFixed(2)}`).join(', ')}`:''} 
-
-BENCHMARKS BRASIL (use para comparações interessantes):
-- Salário médio do trabalhador brasileiro: R$ 3.200/mês
-- Gasto médio com alimentação fora de casa em SP: R$ 800-1.200/mês
-- Comprometimento saudável de renda com fixos: até 50%
-- Taxa de poupança recomendada: 10-20% da renda
-- Inflação IPCA acumulada 2024: ~4,8%
-
-INSTRUÇÕES:
-1. Comece com uma saudação curta e personalizada pelo nome
-2. Destaque 2-3 insights mais relevantes sobre os gastos deste mês
-3. Compare com médias (histórico dele e benchmarks Brasil quando pertinente)
-4. Dê 1-2 sugestões práticas e específicas (não genéricas)
-5. Termine com uma observação motivadora ou curiosidade financeira relevante
-6. Seja direto, use linguagem casual mas profissional
-7. Use emojis com moderação para tornar mais amigável
-8. Máximo 5 parágrafos curtos
-
-Responda APENAS o texto da análise, sem títulos ou markdown pesado.`;
-
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:800,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-
-    if(!res.ok){ throw new Error(`HTTP ${res.status}`); }
-    const data=await res.json();
-    const text=data.content?.[0]?.text||'';
-
-    if(!text){ throw new Error('Resposta vazia'); }
-
-    // Format into nice paragraphs
-    const paras=text.split('\n').filter(p=>p.trim());
-    const html=`<div style="font-size:13.5px;line-height:1.7;color:var(--text2)">
-      ${paras.map((p,i)=>`<p style="margin:0${i>0?';margin-top:10px':''}">${p}</p>`).join('')}
-      <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(94,234,212,.15);font-size:10px;color:var(--text3)">
-        Análise gerada por IA · ${MONTHS[curMonth]} ${curYear} · Baseada nos seus dados reais
-      </div>
-    </div>`;
-
-    insightsCache=html;
-    insightsCacheMonth=cacheKey;
-    content.innerHTML=html;
-
-  }catch(e){
-    content.innerHTML=`<div style="text-align:center;color:var(--text3);font-size:13px">
-      <div style="font-size:20px;margin-bottom:8px">⚠️</div>
-      Não foi possível gerar a análise agora.<br>
-      <span style="font-size:11px">Verifique sua conexão e tente novamente.</span>
-    </div>`;
-    console.error('insights error:',e);
-  }finally{
     btn.textContent='↻ Atualizar';
     btn.disabled=false;
-  }
+  }, 600);
 };
 
-// Auto-load insights when month changes if already cached or first time
+function gerarInsights(){
+  const name=curUser?.displayName||curUser?.email?.split('@')[0]||'você';
+  const txs=getMonthTx();
+  const allTxs=userData.transactions;
+
+  const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+  const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+  const fixed=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
+  const variable=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
+  const bal=inc-exp;
+  const avgExpAnual=calcAnnualAvg(t=>t.type==='expense');
+  const avgIncAnual=calcAnnualAvg(t=>t.type==='income');
+
+  // Top categorias
+  const catMap={};
+  txs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.value;});
+  const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const topCat=topCats[0];
+
+  // Histórico últimos 3 meses
+  const hist=[];
+  for(let i=1;i<=3;i++){
+    let m=curMonth-i,y=curYear; if(m<0){m+=12;y--;}
+    const v=allTxs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===y&&t.type==='expense'; }).reduce((s,t)=>s+t.value,0);
+    if(v>0) hist.push(v);
+  }
+  const avgHist=hist.length?hist.reduce((s,v)=>s+v,0)/hist.length:0;
+
+  // Comprometimento fixo
+  const pctFixed=inc>0?(fixed/inc*100):0;
+  const pctExp=inc>0?(exp/inc*100):0;
+  const poupanca=inc>0?(bal/inc*100):0;
+
+  // Benchmarks BR
+  const salMedioBR=3200;
+  const gastoAlimSP=1000; // média SP
+  const alimentacao=(catMap['Restaurante']||0)+(catMap['Supermercado']||0)+(catMap['99food']||0);
+
+  const paras=[];
+
+  // ── Saudação + visão geral ──
+  if(exp===0 && inc===0){
+    paras.push(`👋 Olá, <b>${name}</b>! Ainda não há lançamentos em ${MONTHS[curMonth]}. Assim que você registrar suas movimentações, vou gerar uma análise completa do seu mês.`);
+    return montarHTML(paras);
+  }
+
+  paras.push(`👋 Olá, <b>${name}</b>! Aqui está seu resumo de <b>${MONTHS[curMonth]} ${curYear}</b>.`);
+
+  // ── Saldo ──
+  if(inc>0){
+    if(bal>0){
+      const emoji=poupanca>=20?'🟢':poupanca>=10?'🟡':'🟠';
+      paras.push(`${emoji} Você <b>gastou ${fmtBRL(exp)}</b> de ${fmtBRL(inc)} de receita, sobrando <b>${fmtBRL(bal)}</b> (${poupanca.toFixed(0)}% de poupança). ${poupanca>=20?'Ótimo! Você está acima da taxa recomendada de 10-20%.':poupanca>=10?'Está dentro da faixa saudável de 10-20% de poupança.':'Tente guardar pelo menos 10% da renda — pequenos ajustes fazem diferença.'}`);
+    } else {
+      paras.push(`🔴 Atenção: suas despesas <b>(${fmtBRL(exp)})</b> superaram a receita <b>(${fmtBRL(inc)})</b> em ${fmtBRL(Math.abs(bal))} este mês. Verifique quais gastos variáveis podem ser reduzidos nos próximos meses.`);
+    }
+  }
+
+  // ── Fixo vs variável ──
+  if(inc>0 && fixed>0){
+    if(pctFixed>60){
+      paras.push(`⚠️ Seus gastos fixos representam <b>${pctFixed.toFixed(0)}%</b> da sua renda — acima do recomendado (50%). Com ${fmtBRL(fixed)} comprometidos todo mês, o espaço para imprevistos fica pequeno. Vale revisar se algum fixo pode ser renegociado.`);
+    } else if(pctFixed>40){
+      paras.push(`📦 Seus gastos fixos são <b>${fmtBRL(fixed)}</b> (${pctFixed.toFixed(0)}% da renda) — dentro de um nível controlável. Os gastos variáveis somam ${fmtBRL(variable)}, que é onde você tem mais flexibilidade para economizar.`);
+    } else {
+      paras.push(`✅ Excelente estrutura de custos: apenas <b>${pctFixed.toFixed(0)}%</b> da sua renda vai para gastos fixos (${fmtBRL(fixed)}). Isso te dá bastante flexibilidade financeira.`);
+    }
+  }
+
+  // ── Top categoria ──
+  if(topCat){
+    const pctTop=exp>0?(topCat[1]/exp*100):0;
+    paras.push(`🏆 Sua maior categoria de gasto é <b>${topCat[0]}</b> com ${fmtBRL(topCat[1])} (${pctTop.toFixed(0)}% das despesas).${pctTop>40?' Essa categoria sozinha representa uma fatia grande — vale analisar se há como otimizá-la.':' Mantendo esse nível, seu orçamento está equilibrado.'}`);
+  }
+
+  // ── Comparação com histórico ──
+  if(avgHist>0 && exp>0){
+    const diffHist=exp-avgHist;
+    const pctDiff=Math.abs(diffHist/avgHist*100);
+    if(pctDiff>10){
+      if(diffHist>0){
+        paras.push(`📈 Comparando com sua média dos últimos meses (${fmtBRL(avgHist)}), você gastou <b>${fmtBRL(diffHist)} a mais</b> este mês. Fique de olho para não virar padrão.`);
+      } else {
+        paras.push(`📉 Comparando com sua média dos últimos meses (${fmtBRL(avgHist)}), você gastou <b>${fmtBRL(Math.abs(diffHist))} a menos</b> — ótima performance! 🎉`);
+      }
+    }
+  }
+
+  // ── Benchmark BR ──
+  if(inc>0){
+    const curiosidades=[];
+    if(inc>salMedioBR*2) curiosidades.push(`💡 Sua renda está acima de <b>90% dos trabalhadores brasileiros</b> (salário médio: ${fmtBRL(salMedioBR)}). Você tem uma capacidade de investimento acima da média — considere diversificar.`);
+    else if(inc>salMedioBR) curiosidades.push(`💡 Sua renda está acima da <b>média brasileira</b> de ${fmtBRL(salMedioBR)}/mês. Aproveite para construir uma reserva de emergência de 3-6 meses de despesas (${fmtBRL(exp*3)}–${fmtBRL(exp*6)}).`);
+
+    if(alimentacao>0){
+      if(alimentacao>gastoAlimSP*1.2) curiosidades.push(`🍽️ Seu gasto com alimentação (${fmtBRL(alimentacao)}) está <b>acima da média de SP</b> (${fmtBRL(gastoAlimSP)}/mês). Cozinhar em casa alguns dias pode gerar uma economia expressiva.`);
+      else if(alimentacao>0) curiosidades.push(`🍽️ Seu gasto com alimentação (${fmtBRL(alimentacao)}) está <b>dentro ou abaixo da média de SP</b> (${fmtBRL(gastoAlimSP)}/mês) — bom controle!`);
+    }
+
+    if(curiosidades.length) paras.push(curiosidades[0]);
+  }
+
+  return montarHTML(paras);
+}
+
+function montarHTML(paras){
+  return `<div style="font-size:13px;line-height:1.75;color:var(--text2)">
+    ${paras.map((p,i)=>`<p style="margin:0${i>0?';margin-top:10px':''}">${p}</p>`).join('')}
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(94,234,212,.15);font-size:10px;color:var(--text3)">
+      Análise gerada com base nos seus dados · ${MONTHS[curMonth]} ${curYear}
+    </div>
+  </div>`;
+}
+
 function maybeAutoInsights(){
   const cacheKey=`${curYear}-${curMonth}`;
-  if(insightsCache && insightsCacheMonth===cacheKey){
-    const content=$('insightsContent');
-    if(content) content.innerHTML=insightsCache;
+  const content=$('insightsContent');
+  if(insightsCache && insightsCacheMonth===cacheKey && content){
+    content.innerHTML=insightsCache;
   }
 }
 
