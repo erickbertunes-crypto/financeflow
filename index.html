@@ -450,17 +450,19 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
             </select>
           </div>
         </div>
-        <!-- BULK ACTION BAR (shows when items selected) -->
-        <div id="txSummaryBar" style="display:none;padding:8px 18px;background:var(--surface2);border-bottom:1px solid var(--border);gap:14px;align-items:center;font-size:12px;font-weight:500"></div>
+        <!-- SELECT ALL always visible, BULK ACTIONS show when selected -->
+        <div style="padding:8px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="selectAllChk" onchange="toggleSelectAll(this.checked)"> Selecionar todos
+          </label>
+          <div id="txSummaryBar" style="display:none;gap:10px;align-items:center;font-size:12px;font-weight:500;flex:1"></div>
+        </div>
         <div id="bulkBar" style="display:none;padding:10px 18px;background:rgba(94,234,212,.06);border-bottom:1px solid rgba(94,234,212,.2);align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:12.5px;font-weight:500" id="bulkCount">0 selecionados</span>
           <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑️ Apagar</button>
           <button class="btn btn-ghost btn-sm" onclick="markSelectedPaid()">✓ Marcar Pago</button>
           <button class="btn btn-ghost btn-sm" onclick="editSelectedCategory()">✏️ Editar Categoria</button>
           <button class="btn btn-ghost btn-sm" onclick="clearSelection()">✕ Cancelar</button>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:auto">
-            <input type="checkbox" id="selectAllChk" onchange="toggleSelectAll(this.checked)"> Todos
-          </label>
         </div>
         <div class="tx-list" id="txList" style="max-height:600px"></div>
       </div>
@@ -880,9 +882,12 @@ const db   = getFirestore(fbApp);
 // STATE
 let curUser = null;
 let userData = { transactions:[], budgets:{}, cardLimit:0 };
+// Open at competency month: if today >= 25th, next month; otherwise current month
 const _today = new Date();
-let curMonth = _today.getMonth();
-let curYear  = _today.getFullYear();
+const _compOffset = _today.getDate() >= 25 ? 1 : 0;
+const _compDate = new Date(_today.getFullYear(), _today.getMonth() + _compOffset, 1);
+let curMonth = _compDate.getMonth();
+let curYear  = _compDate.getFullYear();
 let txModalMode = 'new';
 let editingId   = null;
 let modalTxType = 'expense';
@@ -1229,29 +1234,31 @@ function getTxComp(t){
 }
 
 // Returns average monthly value — includes current month, works with even 1 month of data
+// Returns annual average — works with any number of months including just 1
 function calcAnnualAvg(filterFn){
+  const now=new Date();
   const withData=[];
   for(let m=0;m<12;m++){
-    const now=new Date();
-    if(curYear===now.getFullYear() && m>now.getMonth()) continue;
+    // Skip future months only when viewing the current real year
+    if(curYear===now.getFullYear() && m > now.getMonth()) continue;
     const val=userData.transactions.filter(t=>{
       const co=getTxComp(t);
       return co.month===m && co.year===curYear && filterFn(t);
     }).reduce((s,t)=>s+t.value,0);
-    if(val>0) withData.push(val); // only months with actual data
+    if(val>0) withData.push(val);
   }
-  // Even with 1 month: avg = that month's value (divide by 1)
-  return withData.length ? withData.reduce((s,v)=>s+v,0)/withData.length : 0;
+  if(!withData.length) return 0;
+  return withData.reduce((s,v)=>s+v,0) / withData.length; // avg of months that HAVE data
 }
 
-// Category monthly history helper
+// Category monthly history helper — uses competency
 function catMonthlyHistory(cat){
   const map={};
   userData.transactions.filter(t=>t.category===cat&&t.type==='expense').forEach(t=>{
-    const k=t.competency||t.date.substr(0,7); // use competency
+    const k=t.competency||t.date.substr(0,7);
     map[k]=(map[k]||0)+t.value;
   });
-  return Object.values(map); // one value per month that has data
+  return Object.values(map);
 }
 
 function avgHtml(current, avg){
@@ -1266,7 +1273,7 @@ function avgHtml(current, avg){
     arrow='↓'; cls='avg-down';
     txt=`↓ ${pct.toFixed(0)}% abaixo da média`;
   }
-  return `<span class="${cls}">${arrow}</span>&nbsp;Média anual: <b>${fmtBRL(avg)}</b>&nbsp;<span style="opacity:.65">(${txt})</span>`;
+  return `<span class="${cls}">${arrow}</span>&nbsp;Média: <b>${fmtBRL(avg)}</b>&nbsp;<span style="opacity:.65">(${txt})</span>`;
 }
 
 // DASHBOARD FILTER
@@ -1507,7 +1514,10 @@ window.applyBulkCategory=async function(){
 
 window.setTxFilter=function(f,btn){
   txFilterState=f;
-  document.querySelectorAll('#page-transactions .filter-bar:first-child .filter-btn').forEach(b=>b.classList.remove('active'));
+  // Clear active from type-filter buttons only
+  document.querySelectorAll('#page-transactions .filter-bar .filter-btn').forEach(b=>{
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes('setTxFilter')) b.classList.remove('active');
+  });
   btn.classList.add('active');
   renderTxPage();
 };
