@@ -2740,12 +2740,67 @@ window.processXlsx = function(){
 
 // DOWNLOAD MODELO XLSX
 window.downloadModelo=function(){
-  const b64="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";
-  const bytes=atob(b64);
-  const arr=new Uint8Array(bytes.length);
-  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
-  const blob=new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='FinanceFlow_Modelo.xlsx'; a.click();
+  function gerar(){
+    const XL=window.XLSX;
+    if(!XL){ toast('⚠️','Aguarde, carregando...'); return; }
+
+    const wb=XL.utils.book_new();
+
+    // ── Aba 1: Lançamentos (apenas cabeçalho, pronto para preencher) ──
+    const ws1=XL.utils.aoa_to_sheet([[
+      'Data da Compra','Descrição','Valor (R$)','Categoria','Tipo','Parcelado'
+    ]]);
+    ws1['!cols']=[{wch:16},{wch:34},{wch:12},{wch:22},{wch:12},{wch:12}];
+    XL.utils.book_append_sheet(wb,ws1,'Lançamentos');
+
+    // ── Aba 2: Categorias (sempre com as categorias atuais do app) ──
+    const cats=getCats();
+    const exp=cats.filter(c=>c.type==='expense').map(c=>c.name);
+    const inc=cats.filter(c=>c.type==='income').map(c=>c.name);
+    const maxLen=Math.max(exp.length,inc.length);
+    const ws2rows=[['DESPESAS','RECEITAS']];
+    for(let i=0;i<maxLen;i++) ws2rows.push([exp[i]||'', inc[i]||'']);
+    const ws2=XL.utils.aoa_to_sheet(ws2rows);
+    ws2['!cols']=[{wch:24},{wch:20}];
+    XL.utils.book_append_sheet(wb,ws2,'Categorias');
+
+    // ── Aba 3: Instruções ──
+    const ws3=XL.utils.aoa_to_sheet([
+      ['FinanceFlow Pro — Como preencher a planilha'],
+      [''],
+      ['CAMPOS OBRIGATÓRIOS'],
+      ['Data da Compra','DD/MM/AAAA ou AAAA-MM-DD. Ex: 25/03/2026'],
+      ['Descrição','Nome do estabelecimento ou produto'],
+      ['Valor (R$)','Somente números. Ex: 59,90 ou 59.90'],
+      [''],
+      ['CAMPOS OPCIONAIS'],
+      ['Categoria','Use os nomes exatos da aba "Categorias". Se vazio, o app categoriza pelo histórico.'],
+      ['Tipo','Digite:  fixo   ou   variavel'],
+      ['Parcelado','nao   /   1/12   /   3/6  (parcela atual / total de parcelas)'],
+      [''],
+      ['DICAS'],
+      ['','• Não apague ou renomeie as colunas do cabeçalho'],
+      ['','• Salve o arquivo como .xlsx antes de fazer upload'],
+      ['','• O mês de competência é selecionado na tela de importação do app'],
+      ['','• Duplicatas são detectadas automaticamente'],
+      ['','• Deixe a coluna Categoria vazia para categorização automática'],
+    ]);
+    ws3['!cols']=[{wch:18},{wch:65}];
+    XL.utils.book_append_sheet(wb,ws3,'Instruções');
+
+    XL.writeFile(wb,'FinanceFlow_Modelo.xlsx');
+    toast('✅','Planilha gerada com suas categorias atuais!');
+  }
+
+  if(window.XLSX){
+    gerar();
+  } else {
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=gerar;
+    s.onerror=()=>toast('❌','Erro ao carregar leitor de Excel.');
+    document.head.appendChild(s);
+  }
 };
 
 // KEYBOARD
