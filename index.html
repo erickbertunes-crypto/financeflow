@@ -451,13 +451,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
           </div>
         </div>
         <!-- BULK ACTION BAR (shows when items selected) -->
-        <div id="bulkBar" style="display:none;padding:10px 18px;background:rgba(94,234,212,.06);border-bottom:1px solid rgba(94,234,212,.2);display:none;align-items:center;gap:12px;flex-wrap:wrap">
+        <div id="txSummaryBar" style="display:none;padding:8px 18px;background:var(--surface2);border-bottom:1px solid var(--border);gap:14px;align-items:center;font-size:12px;font-weight:500"></div>
+        <div id="bulkBar" style="display:none;padding:10px 18px;background:rgba(94,234,212,.06);border-bottom:1px solid rgba(94,234,212,.2);align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:12.5px;font-weight:500" id="bulkCount">0 selecionados</span>
-          <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑️ Apagar selecionados</button>
-          <button class="btn btn-ghost btn-sm" onclick="markSelectedPaid()">✓ Marcar como Pago</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑️ Apagar</button>
+          <button class="btn btn-ghost btn-sm" onclick="markSelectedPaid()">✓ Marcar Pago</button>
+          <button class="btn btn-ghost btn-sm" onclick="editSelectedCategory()">✏️ Editar Categoria</button>
           <button class="btn btn-ghost btn-sm" onclick="clearSelection()">✕ Cancelar</button>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:auto">
-            <input type="checkbox" id="selectAllChk" onchange="toggleSelectAll(this.checked)"> Selecionar todos
+            <input type="checkbox" id="selectAllChk" onchange="toggleSelectAll(this.checked)"> Todos
           </label>
         </div>
         <div class="tx-list" id="txList" style="max-height:600px"></div>
@@ -602,7 +604,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="page" id="page-import">
       <div class="page-hdr">
         <div><div class="page-title">Importar Planilha 📊</div><div class="page-sub">Suba seu Excel e o app lança tudo automaticamente</div></div>
-        <a href="FinanceFlow_Modelo.xlsx" download class="btn btn-ghost" style="display:flex;align-items:center;gap:6px">⬇️ Baixar Modelo</a>
+        <button onclick="downloadModelo()" class="btn btn-ghost" style="display:flex;align-items:center;gap:6px">⬇️ Baixar Modelo</button>
       </div>
 
       <div class="sec-card" style="margin-bottom:16px">
@@ -629,7 +631,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
             <input type="month" class="form-input" id="xlsxComp" style="width:auto">
             <div style="font-size:12px;color:var(--text3)">= mês em que a fatura será paga</div>
           </div>
-          <div style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:8px;padding:8px 12px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">
+            <label style="font-size:12px;color:var(--text2);white-space:nowrap">Total da fatura (R$):</label>
+            <input type="number" class="form-input" id="xlsxTotalExpected" placeholder="Ex: 3612.38" step="0.01" style="width:160px" oninput="checkXlsxTotal()">
+            <div id="xlsxTotalMatchBadge" style="font-size:12px"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:8px;padding:8px 12px;margin-top:8px">
             💡 Fatura que fecha em março e vence em abril → selecione <strong>abril/2026</strong>
           </div>
         </div>
@@ -742,6 +749,21 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="form-group" style="margin:0"><label class="form-label">Parcela Atual</label><input class="form-input" type="number" id="txPC" placeholder="1" min="1"></div>
         <div class="form-group" style="margin:0"><label class="form-label">Total de Parcelas</label><input class="form-input" type="number" id="txPT" placeholder="12" min="1"></div>
       </div>
+    </div>
+    <!-- RECURRING (shown only for income) -->
+    <div class="form-group" id="recurringGroup" style="display:none">
+      <label class="form-label">🔁 Repetir receita em vários meses</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select class="form-input" id="txRecurring" style="width:auto" onchange="toggleRecurringN()">
+          <option value="0">Não repetir</option>
+          <option value="3">3 meses</option>
+          <option value="6">6 meses</option>
+          <option value="12">12 meses</option>
+          <option value="custom">Personalizado</option>
+        </select>
+        <input type="number" class="form-input" id="txRecurringN" placeholder="Qtd meses" min="2" max="60" style="display:none;width:130px">
+      </div>
+      <div style="font-size:10.5px;color:var(--text3);margin-top:5px">Cria lançamentos idênticos nos meses seguintes a partir da competência escolhida</div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeTxModal()">Cancelar</button>
@@ -858,8 +880,9 @@ const db   = getFirestore(fbApp);
 // STATE
 let curUser = null;
 let userData = { transactions:[], budgets:{}, cardLimit:0 };
-let curMonth = new Date().getMonth();
-let curYear  = new Date().getFullYear();
+const _today = new Date();
+let curMonth = _today.getMonth();
+let curYear  = _today.getFullYear();
 let txModalMode = 'new';
 let editingId   = null;
 let modalTxType = 'expense';
@@ -1082,6 +1105,9 @@ window.openTxModal=function(id=null){
   $('txPC').value=''; $('txPT').value='';
   $('parcelSec').style.display='none';
   $('compHint').style.display='none';
+  if($('recurringGroup')) $('recurringGroup').style.display='none';
+  if($('txRecurring')) $('txRecurring').value='0';
+  if($('txRecurringN')) $('txRecurringN').style.display='none';
   document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector('.type-btn.expense').classList.add('active');
   $('txModalTitle').textContent=id?'Editar Lançamento':'Novo Lançamento';
@@ -1105,7 +1131,19 @@ window.openTxModal=function(id=null){
   $('txModal').classList.add('open');
 };
 window.closeTxModal=function(){ $('txModal').classList.remove('open'); };
-window.setTxType=function(type,btn){ modalTxType=type; document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); };
+window.setTxType=function(type,btn){
+  modalTxType=type;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  // Show recurring only for income
+  const rg=$('recurringGroup');
+  if(rg) rg.style.display=(type==='income')?'block':'none';
+};
+
+window.toggleRecurringN=function(){
+  const v=$('txRecurring').value;
+  $('txRecurringN').style.display=(v==='custom')?'inline-block':'none';
+};
 window.toggleParcel=function(){ $('parcelSec').style.display=$('txIsInst').value==='yes'?'block':'none'; };
 
 window.saveTx=async function(){
@@ -1140,8 +1178,27 @@ window.saveTx=async function(){
         }
         toast('🔄',`${total-cur+1} parcela(s) criada(s)!`);
       }else{
-        const tx={desc,value,date,competency,category,expenseType,payment,status,type:modalTxType,installment:false};
-        const newId=await fsAddTx(tx); userData.transactions.push({id:newId,...tx}); toast('✅','Lançamento salvo!');
+        // Check recurring (income only)
+        const recurVal=$('txRecurring')?.value||'0';
+        let recurN=0;
+        if(modalTxType==='income' && recurVal!=='0'){
+          recurN=recurVal==='custom'?(parseInt($('txRecurringN')?.value)||0):parseInt(recurVal);
+        }
+        if(recurN>0){
+          // Save recurring income across multiple months
+          const[compY,compM]=competency.split('-').map(Number);
+          let saved=0;
+          for(let i=0;i<recurN;i++){
+            const tM=(compM-1+i)%12, tY=compY+Math.floor((compM-1+i)/12);
+            const comp=`${tY}-${String(tM+1).padStart(2,'0')}`;
+            const tx={desc,value,date,competency:comp,category,expenseType,payment,status,type:'income',installment:false};
+            const newId=await fsAddTx(tx); userData.transactions.push({id:newId,...tx}); saved++;
+          }
+          toast('🔁',`${saved} meses de receita criados!`);
+        }else{
+          const tx={desc,value,date,competency,category,expenseType,payment,status,type:modalTxType,installment:false};
+          const newId=await fsAddTx(tx); userData.transactions.push({id:newId,...tx}); toast('✅','Lançamento salvo!');
+        }
       }
     }
     closeTxModal(); renderAll();
@@ -1171,19 +1228,20 @@ function getTxComp(t){
   return{year:cy, month:cm-1}; // month is 0-indexed
 }
 
-// Returns average monthly value for a filter — all months with ANY data in the year
+// Returns average monthly value — includes current month, works with even 1 month of data
 function calcAnnualAvg(filterFn){
   const withData=[];
   for(let m=0;m<12;m++){
     const now=new Date();
     if(curYear===now.getFullYear() && m>now.getMonth()) continue;
     const val=userData.transactions.filter(t=>{
-      const c=getTxComp(t);
-      return c.month===m && c.year===curYear && filterFn(t);
+      const co=getTxComp(t);
+      return co.month===m && co.year===curYear && filterFn(t);
     }).reduce((s,t)=>s+t.value,0);
-    if(val>0) withData.push(val);
+    if(val>0) withData.push(val); // only months with actual data
   }
-  return withData.length?withData.reduce((s,v)=>s+v,0)/withData.length:0;
+  // Even with 1 month: avg = that month's value (divide by 1)
+  return withData.length ? withData.reduce((s,v)=>s+v,0)/withData.length : 0;
 }
 
 // Category monthly history helper
@@ -1413,7 +1471,38 @@ window.markSelectedPaid=async function(){
     }
   }
   selectedTxIds.clear();
-  renderAll(); toast('✅','Lançamentos marcados como pagos!');
+  renderTxPage(); renderAll(); toast('✅','Lançamentos marcados como pagos!');
+};
+
+window.editSelectedCategory=function(){
+  if(!selectedTxIds.size){ toast('⚠️','Selecione lançamentos primeiro.'); return; }
+  const cats=getCats();
+  const opts=cats.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
+  // Simple inline prompt via a floating overlay
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center';
+  ov.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:24px;width:320px;max-width:95vw">
+    <div style="font-family:\'Syne\',sans-serif;font-size:15px;font-weight:700;margin-bottom:14px">Editar categoria de ${selectedTxIds.size} item(s)</div>
+    <select id="_bulkCatSel" class="form-input" style="margin-bottom:14px">${opts}</select>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="this.closest('div[style*=fixed]').remove()">Cancelar</button>
+      <button class="btn btn-primary" style="flex:1" onclick="applyBulkCategory()">Aplicar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+};
+
+window.applyBulkCategory=async function(){
+  const sel=document.getElementById('_bulkCatSel');
+  if(!sel) return;
+  const cat=sel.value;
+  document.querySelector('div[style*="z-index:6000"]')?.remove();
+  for(const id of selectedTxIds){
+    const idx=userData.transactions.findIndex(t=>t.id===id);
+    if(idx!==-1){ userData.transactions[idx].category=cat; try{ await fsUpdateTx(id,{category:cat}); }catch(e){} }
+  }
+  selectedTxIds.clear();
+  renderTxPage(); renderAll(); toast('✏️',`Categoria atualizada para ${cat}!`);
 };
 
 window.setTxFilter=function(f,btn){
@@ -1427,7 +1516,6 @@ function renderTxPage(){
   populateCatFilter();
   const search=($('txSearch')?.value||'').toLowerCase();
   const catF=($('txCatFilter')?.value||'');
-  // Use ALL transactions filtered by competency month
   let txs=getMonthTx().sort((a,b)=>b.date.localeCompare(a.date));
 
   if(txFilterState==='income') txs=txs.filter(t=>t.type==='income');
@@ -1437,12 +1525,23 @@ function renderTxPage(){
   else if(txFilterState==='card') txs=txs.filter(t=>t.payment==='card');
   else if(txFilterState==='pix') txs=txs.filter(t=>t.payment==='pix');
   else if(txFilterState==='installment') txs=txs.filter(t=>t.installment);
-
   if(statusFilter==='paid') txs=txs.filter(t=>t.status==='paid');
   else if(statusFilter==='pending') txs=txs.filter(t=>t.status==='pending');
-
   if(catF) txs=txs.filter(t=>t.category===catF);
   if(search) txs=txs.filter(t=>(t.desc+' '+t.category).toLowerCase().includes(search));
+
+  // ── Summary bar for filtered results ──
+  const filtInc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+  const filtExp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+  const filtN=txs.length;
+  const summaryBar=$('txSummaryBar');
+  if(summaryBar){
+    if(filtN>0){
+      summaryBar.innerHTML=`<span style="color:var(--text3);font-size:11px">${filtN} lançamento(s)</span>`+
+        (filtInc>0?`<span style="color:var(--accent)">+${fmtBRL(filtInc)}</span>`:'')+(filtExp>0?`<span style="color:var(--red)">−${fmtBRL(filtExp)}</span>`:'');
+      summaryBar.style.display='flex';
+    } else { summaryBar.style.display='none'; }
+  }
 
   $('txList').innerHTML=txs.length?txs.map(t=>{
     const isSelected=selectedTxIds.has(t.id);
@@ -2458,23 +2557,56 @@ function guessCategoryFromHistory(desc){
   return best;
 }
 
+function getXlsxTotal(){
+  return xlsxParsed.filter((_,i)=>xlsxSelected.has(i)).reduce((s,t)=>s+t.value,0);
+}
+
+window.checkXlsxTotal=function(){
+  const expected=parseFloat($('xlsxTotalExpected')?.value)||0;
+  const actual=getXlsxTotal();
+  const badge=$('xlsxTotalMatchBadge');
+  if(!badge||!expected) return;
+  const diff=Math.abs(actual-expected);
+  if(diff<0.02){
+    badge.innerHTML='<span style="color:var(--accent);font-weight:600">✓ Bate exatamente!</span>';
+  } else {
+    badge.innerHTML=`<span style="color:var(--red);font-weight:600">✗ Diferença: ${fmtBRL(diff)}</span>`;
+  }
+};
+
 function renderXlsxResults(){
   const comp = $('xlsxComp').value || '';
   const existComp = userData.transactions.filter(t=>(t.competency||t.date.substr(0,7))===comp);
-  
+
   function isDup(item){
     return existComp.some(t=>Math.abs(t.value-item.value)<0.02 &&
       t.desc.toLowerCase().slice(0,6)===item.desc.toLowerCase().slice(0,6));
   }
 
-  const total = xlsxParsed.filter((_,i)=>xlsxSelected.has(i)).reduce((s,t)=>s+t.value,0);
+  const total = getXlsxTotal();
+  const expected = parseFloat($('xlsxTotalExpected')?.value)||0;
+  const diff = expected>0 ? Math.abs(total-expected) : -1;
+
   $('xlsxResultsSub').textContent = `${xlsxSelected.size} de ${xlsxParsed.length} selecionados · Total: ${fmtBRL(total)}`;
+
+  let matchHtml = '';
+  if(expected>0){
+    if(diff<0.02){
+      matchHtml=`<span style="color:var(--accent);font-weight:600;font-size:13px">✓ Total bate exatamente com a fatura!</span>`;
+    } else {
+      matchHtml=`<span style="color:var(--red);font-weight:600;font-size:13px">✗ Diferença de ${fmtBRL(diff)} em relação ao total esperado</span>`;
+    }
+  }
+
   $('xlsxTotalCheck').innerHTML = `
-    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
-      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Lançamentos</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;width:100%">
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Itens</div>
         <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700">${xlsxParsed.length}</div></div>
-      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Total</div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Total Planilha</div>
         <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--red)">${fmtBRL(total)}</div></div>
+      ${expected>0?`<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Total Fatura</div>
+        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text2)">${fmtBRL(expected)}</div></div>`:''}
+      ${matchHtml?`<div style="flex:1">${matchHtml}</div>`:''}
       <div style="font-size:11px;color:var(--text3)">Competência: <b style="color:var(--accent)">${comp}</b></div>
     </div>`;
 
@@ -2493,7 +2625,8 @@ function renderXlsxResults(){
           </select>
         </div>
         <div>
-          <input class="import-field" type="number" value="${item.value.toFixed(2)}" step="0.01" oninput="xlsxParsed[${i}].value=parseFloat(this.value)||0;updateXlsxTotal()" style="font-weight:700;color:var(--red);text-align:right;margin-bottom:4px">
+          <input class="import-field" type="number" value="${item.value.toFixed(2)}" step="0.01"
+            oninput="xlsxParsed[${i}].value=parseFloat(this.value)||0;updateXlsxTotal()" style="font-weight:700;color:var(--red);text-align:right;margin-bottom:4px">
           <input class="import-field" type="date" value="${item.date}" oninput="xlsxParsed[${i}].date=this.value">
         </div>
         <div style="grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px">
@@ -2508,11 +2641,15 @@ function renderXlsxResults(){
       <button class="btn-icon" onclick="toggleXlsxItem(${i},false);document.getElementById('xrow-${i}').style.opacity='.35'" title="Remover">✕</button>
     </div>`;
   }).join('');
+
+  // Run total check if expected already filled
+  checkXlsxTotal();
 }
 
 function updateXlsxTotal(){
-  const total = xlsxParsed.filter((_,i)=>xlsxSelected.has(i)).reduce((s,t)=>s+t.value,0);
+  const total = getXlsxTotal();
   $('xlsxResultsSub').textContent = `${xlsxSelected.size} de ${xlsxParsed.length} selecionados · Total: ${fmtBRL(total)}`;
+  checkXlsxTotal();
 }
 
 window.toggleXlsxItem = function(i, checked){
@@ -2570,6 +2707,16 @@ window.processXlsx = function(){
   readXlsxFile(el.files[0]);
 };
 
+
+// DOWNLOAD MODELO XLSX
+window.downloadModelo=function(){
+  const b64="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";
+  const bytes=atob(b64);
+  const arr=new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+  const blob=new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='FinanceFlow_Modelo.xlsx'; a.click();
+};
 
 // KEYBOARD
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeTxModal(); closeBudgetModal(); } });
