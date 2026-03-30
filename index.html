@@ -1060,7 +1060,7 @@ window.gotoPage=function(name){
   $('page-'+name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>{ if(n.getAttribute('onclick')?.includes(name))n.classList.add('active'); });
   closeSidebar();
-  if(name==='transactions')renderTxPage();
+  if(name==='transactions'){ populateCatFilter(); renderTxPage(); }
   if(name==='budget')renderBudget();
   if(name==='credit')renderCredit();
   if(name==='cashflow')renderCashflow();
@@ -1206,7 +1206,7 @@ window.saveTx=async function(){
         }
       }
     }
-    closeTxModal(); renderAll();
+    closeTxModal(); populateCatFilter(); renderAll();
   }catch(e){ toast('❌','Erro ao salvar. Tente novamente.'); console.error(e); }
   finally{ $('txSaveBtn').disabled=false; $('txSaveBtn').textContent='Salvar'; }
 };
@@ -1523,7 +1523,7 @@ window.setTxFilter=function(f,btn){
 };
 
 function renderTxPage(){
-  populateCatFilter();
+  // NOTE: populateCatFilter() NOT called here — it resets the select value
   const search=($('txSearch')?.value||'').toLowerCase();
   const catF=($('txCatFilter')?.value||'');
   let txs=getMonthTx().sort((a,b)=>b.date.localeCompare(a.date));
@@ -2038,7 +2038,7 @@ function renderCredit(){
 function renderAll(){
   renderDashboard();
   const active=document.querySelector('.page.active')?.id?.replace('page-','');
-  if(active==='transactions')renderTxPage();
+  if(active==='transactions'){ populateCatFilter(); renderTxPage(); }
   if(active==='budget')renderBudget();
   if(active==='credit')renderCredit();
   if(active==='cashflow')renderCashflow();
