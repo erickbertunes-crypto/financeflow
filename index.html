@@ -1042,7 +1042,10 @@ onAuthStateChanged(auth,async user=>{
       await registerEmailIndex();
       setupUI(); renderAll();
       $('scLoad').classList.add('hidden'); $('scApp').style.display='flex';
-    }catch(e){ console.error(e); $('loadMsg').textContent='Erro ao carregar. Recarregue a página.'; }
+    }catch(e){
+      console.error('Load error:',e);
+      $('loadMsg').innerHTML=`Erro ao carregar dados.<br><small style="color:#f87171">${e?.message||''}</small><br><br><button onclick="location.reload()" style="margin-top:8px;padding:8px 16px;background:#5eead4;color:#0a0c10;border:none;border-radius:8px;cursor:pointer;font-weight:700">↻ Recarregar</button>`;
+    }
   }else{
     curUser=null; userData={transactions:[],budgets:{},cardLimit:0};
     $('scLoad').classList.add('hidden'); $('scApp').style.display='none'; $('scAuth').classList.remove('hidden');
@@ -1056,8 +1059,8 @@ function setupUI(){
   updateMonthLabel();
   const years=[...new Set(userData.transactions.map(t=>getTxComp(t).year).concat([curYear]))].sort();
   $('cfYear').innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); $('cfYear').value=curYear;
-  if(userData.reserve>0) $('cfReserve').value=userData.reserve;
-  if(userData.patrimonio>0) $('cfPatrimonio').value=userData.patrimonio;
+  // cfReserve field removed — per-month reserves used instead (ignore legacy global reserve)
+  if(userData.patrimonio>0 && $('cfPatrimonio')) $('cfPatrimonio').value=userData.patrimonio;
   populateCatSelects();
 }
 
