@@ -2271,30 +2271,41 @@ async function renderShared(status){
   const partnerName=status.partnerName||status.partnerEmail;
   const myName=curUser.displayName||curUser.email.split('@')[0];
 
-  let partnerTxs=[], partnerPatrimonio=0, partnerReserve=0;
+  let partnerTxs=[], partnerPatrimonio=0, partnerMonthlyReserves={};
   try{
     const pTxSnap=await getDocs(collection(db,'users',partnerUid,'transactions'));
     pTxSnap.forEach(d=>partnerTxs.push({id:d.id,...d.data()}));
     const pSettings=await getDoc(doc(db,'users',partnerUid));
-    if(pSettings.exists()){ partnerPatrimonio=pSettings.data().patrimonio||0; partnerReserve=pSettings.data().reserve||0; }
+    if(pSettings.exists()){
+      partnerPatrimonio=pSettings.data().patrimonio||0;
+      partnerMonthlyReserves=pSettings.data().monthlyReserves||{};
+    }
   }catch(e){ toast('⚠️','Não foi possível carregar os dados do parceiro.'); }
 
   const myTxs=userData.transactions;
   const myPatrimonio=userData.patrimonio||0;
-  const myReserve=userData.reserve||0;
+  const myMonthlyReserves=userData.monthlyReserves||{};
 
-  function calcYear(txs,patrimIni,reserve){
+  // Get per-month reserve for a given reserves map and year/month
+  function getReserveForMonth(reservesMap, yr, m){
+    const key=`${yr}-${String(m+1).padStart(2,'0')}`;
+    return reservesMap[key]!==undefined ? reservesMap[key] : 0;
+  }
+
+  function calcYear(txs, patrimIni, reservesMap){
     const monthly=MONTHS_S.map((_,m)=>{
       const mt=txs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
       const inc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
       const fi=mt.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
       const va=mt.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
       const exp=fi+va; const bal=inc-exp;
-      const balAfterRes=bal-(inc>0||exp>0?reserve:0);
-      return{inc,fi,va,exp,bal,reserve:inc>0||exp>0?reserve:0,balAfterRes};
+      const hasData=inc>0||exp>0;
+      const reserve=hasData ? getReserveForMonth(reservesMap, year, m) : 0;
+      const balAfterRes=bal-reserve;
+      return{inc,fi,va,exp,bal,reserve,balAfterRes,hasData};
     });
     let pat=patrimIni;
-    const patriAcc=monthly.map(m=>{ pat+=m.balAfterRes; return pat; });
+    const patriAcc=monthly.map(m=>{ if(m.hasData) pat+=m.balAfterRes; return pat; });
     const totInc=monthly.reduce((s,m)=>s+m.inc,0);
     const totExp=monthly.reduce((s,m)=>s+m.exp,0);
     const totFi=monthly.reduce((s,m)=>s+m.fi,0);
@@ -2304,8 +2315,8 @@ async function renderShared(status){
     return{monthly,patriAcc,totInc,totExp,totFi,totVa,totRes,totBal,finalPat:patriAcc[11]};
   }
 
-  const me=calcYear(myTxs,myPatrimonio,myReserve);
-  const pt=calcYear(partnerTxs,partnerPatrimonio,partnerReserve);
+  const me=calcYear(myTxs,myPatrimonio,myMonthlyReserves);
+  const pt=calcYear(partnerTxs,partnerPatrimonio,partnerMonthlyReserves);
   const tog={
     monthly:MONTHS_S.map((_,m)=>({
       inc:me.monthly[m].inc+pt.monthly[m].inc,
@@ -2351,9 +2362,9 @@ async function renderShared(status){
   }
 
   $('sharedTables').innerHTML=
-    buildTable(myName, me, me.patriAcc, 'var(--accent)', myReserve>0)+
-    buildTable(partnerName, pt, pt.patriAcc, 'var(--accent2)', partnerReserve>0)+
-    buildTable('Consolidado — Juntos', tog, togPatAcc, 'var(--accent5)', myReserve>0||partnerReserve>0);
+    buildTable(myName, me, me.patriAcc, 'var(--accent)', me.totRes>0)+
+    buildTable(partnerName, pt, pt.patriAcc, 'var(--accent2)', pt.totRes>0)+
+    buildTable('Consolidado — Juntos', tog, togPatAcc, 'var(--accent5)', me.totRes>0||pt.totRes>0);
 
   $('sharedSub').textContent=`${myName} & ${partnerName} — ${year}`;
 }
