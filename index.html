@@ -153,6 +153,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .type-btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;font-family:'DM Sans',sans-serif;background:transparent;color:var(--text2)}
 .type-btn.expense.active{background:rgba(248,113,113,.15);border-color:var(--red);color:var(--red)}
 .type-btn.income.active{background:rgba(94,234,212,.15);border-color:var(--accent);color:var(--accent)}
+.type-btn.refund.active{background:rgba(52,211,153,.15);border-color:#34d399;color:#34d399}
+.tx-amt.refund{color:#34d399}
 .modal-foot{display:flex;gap:8px;margin-top:16px}
 .modal-foot .btn{flex:1;padding:11px;text-align:center}
 .parcel-sec{display:none}
@@ -722,6 +724,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="type-toggle">
       <button class="type-btn expense active" onclick="setTxType('expense',this)">↓ Despesa</button>
       <button class="type-btn income" onclick="setTxType('income',this)">↑ Receita</button>
+      <button class="type-btn" id="typeBtnRefund" onclick="setTxType('refund',this)" style="background:transparent;color:var(--text2);border:1px solid var(--border)">↩️ Reembolso</button>
     </div>
     <div class="form-row">
       <div class="form-group" style="margin:0;position:relative">
@@ -1143,10 +1146,17 @@ window.openTxModal=function(id=null){
   if(id){
     const tx=userData.transactions.find(t=>t.id===id);
     if(tx){
-      modalTxType=tx.type;
+      // Detect refund: expense with negative value OR refund flag
+      const isRefund = tx.refund || (tx.type==='expense' && tx.value<0);
+      modalTxType = isRefund ? 'refund' : tx.type;
       document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelector(`.type-btn.${tx.type}`).classList.add('active');
-      $('txDesc').value=tx.desc; $('txVal').value=tx.value; $('txDate').value=tx.date;
+      const activeBtn = isRefund
+        ? document.querySelector('#typeBtnRefund')
+        : document.querySelector(`.type-btn.${tx.type}`);
+      if(activeBtn) activeBtn.classList.add('active');
+      $('txDesc').value=tx.desc;
+      $('txVal').value=Math.abs(tx.value); // always positive in input
+      $('txDate').value=tx.date;
       $('txCompetency').value=tx.competency||tx.date.substr(0,7);
       $('txCat').value=tx.category||''; $('txExpType').value=tx.expenseType||'variable';
       $('txPay').value=tx.payment||'card'; $('txStatus').value=tx.status||'paid';
@@ -1166,6 +1176,13 @@ window.setTxType=function(type,btn){
   // Show recurring only for income
   const rg=$('recurringGroup');
   if(rg) rg.style.display=(type==='income')?'block':'none';
+  // Auto-select Reembolso category for refund
+  if(type==='refund'){
+    const catSel=$('txCat');
+    if(catSel) for(const opt of catSel.options){
+      if(opt.value==='Reembolso'){ catSel.value='Reembolso'; break; }
+    }
+  }
 };
 
 window.toggleRecurringN=function(){
@@ -1184,12 +1201,18 @@ window.saveTx=async function(){
   if(!date){ toast('⚠️','Informe a data.'); return; }
   if(!competency){ toast('⚠️','Informe o mês de competência.'); return; }
   if(!category){ toast('⚠️','Selecione uma categoria.'); return; }
+
+  // Reembolso: salva como expense com valor negativo
+  const isRefund = modalTxType==='refund';
+  const finalType = isRefund ? 'expense' : modalTxType;
+  const finalValue = isRefund ? -Math.abs(value) : Math.abs(value);
+
   $('txSaveBtn').disabled=true; $('txSaveBtn').textContent='Salvando...';
   try{
     if(txModalMode==='edit'&&editingId){
       const idx=userData.transactions.findIndex(t=>t.id===editingId);
       if(idx!==-1){
-        const updated={...userData.transactions[idx],desc,value,date,competency,category,expenseType,payment,status,type:modalTxType,installment:isInst};
+        const updated={...userData.transactions[idx],desc,value:finalValue,date,competency,category,expenseType,payment,status,type:finalType,refund:isRefund,installment:isInst};
         if(isInst){ updated.installCurrent=parseInt($('txPC').value)||1; updated.installTotal=parseInt($('txPT').value)||1; }
         await fsUpdateTx(editingId,updated); userData.transactions[idx]=updated; toast('✏️','Lançamento atualizado!');
       }
@@ -1201,31 +1224,30 @@ window.saveTx=async function(){
         for(let i=cur;i<=total;i++){
           const mOff=i-cur,tM=(compM-1+mOff)%12,tY=compY+Math.floor((compM-1+mOff)/12);
           const tDate=i===cur?date:`${tY}-${String(tM+1).padStart(2,'0')}-01`;
-          const tx={desc:`${desc} ${i}/${total}`,value,date:tDate,category,expenseType,payment,status:i===cur?status:'pending',type:modalTxType,installment:true,installCurrent:i,installTotal:total,competency:`${tY}-${String(tM+1).padStart(2,'0')}`,groupId};
+          const tx={desc:`${desc} ${i}/${total}`,value:finalValue,date:tDate,category,expenseType,payment,status:i===cur?status:'pending',type:finalType,refund:isRefund,installment:true,installCurrent:i,installTotal:total,competency:`${tY}-${String(tM+1).padStart(2,'0')}`,groupId};
           const newId=await fsAddTx(tx); userData.transactions.push({id:newId,...tx});
         }
         toast('🔄',`${total-cur+1} parcela(s) criada(s)!`);
       }else{
-        // Check recurring (income only)
         const recurVal=$('txRecurring')?.value||'0';
         let recurN=0;
         if(modalTxType==='income' && recurVal!=='0'){
           recurN=recurVal==='custom'?(parseInt($('txRecurringN')?.value)||0):parseInt(recurVal);
         }
         if(recurN>0){
-          // Save recurring income across multiple months
           const[compY,compM]=competency.split('-').map(Number);
           let saved=0;
           for(let i=0;i<recurN;i++){
             const tM=(compM-1+i)%12, tY=compY+Math.floor((compM-1+i)/12);
             const comp=`${tY}-${String(tM+1).padStart(2,'0')}`;
-            const tx={desc,value,date,competency:comp,category,expenseType,payment,status,type:'income',installment:false};
+            const tx={desc,value:finalValue,date,competency:comp,category,expenseType,payment,status,type:'income',installment:false};
             const newId=await fsAddTx(tx); userData.transactions.push({id:newId,...tx}); saved++;
           }
           toast('🔁',`${saved} meses de receita criados!`);
         }else{
-          const tx={desc,value,date,competency,category,expenseType,payment,status,type:modalTxType,installment:false};
-          const newId=await fsAddTx(tx); userData.transactions.push({id:newId,...tx}); toast('✅','Lançamento salvo!');
+          const tx={desc,value:finalValue,date,competency,category,expenseType,payment,status,type:finalType,refund:isRefund,installment:false};
+          const newId=await fsAddTx(tx); userData.transactions.push({id:newId,...tx});
+          toast(isRefund?'↩️':'✅', isRefund?'Reembolso lançado!':'Lançamento salvo!');
         }
       }
     }
@@ -1595,11 +1617,11 @@ function renderTxPage(){
     const tp=t.type==='expense'?(t.expenseType==='fixed'?'<span class="badge b-info">Fixo</span>':'<span class="badge b-orange">Variável</span>'):'';
     const st=t.status==='paid'?'<span class="badge b-ok">Pago</span>':'<span class="badge b-warn">Pendente</span>';
     const compBadge=t.competency&&t.competency!==t.date.substr(0,7)?`<span class="badge" style="background:rgba(251,191,36,.12);color:var(--yellow)">Comp: ${t.competency}</span>`:'';
-    return `<div class="tx-item${isSelected?' selected':''}" data-txid="${t.id}">
+  return `<div class="tx-item${isSelected?' selected':''}" data-txid="${t.id}">
       <input type="checkbox" class="tx-chk" data-id="${t.id}" ${isSelected?'checked':''} onchange="toggleTxSelect('${t.id}',this)">
       <div><div class="tx-name">${t.desc}</div>
       <div class="tx-meta">${fmtDate(t.date)} · ${catIcon(t.category)} ${t.category||'—'} · ${PAY_LABEL[t.payment]||'—'} ${st} ${inst} ${tp} ${compBadge}</div></div>
-      <div class="tx-amt ${t.type}">${t.type==='expense'?'−':'+'}${fmtBRL(t.value)}</div>
+      <div class="tx-amt ${t.refund||(t.type==='expense'&&t.value<0)?'refund':t.type}">${t.refund||(t.type==='expense'&&t.value<0)?'↩️ +':t.type==='expense'?'−':'+'}${fmtBRL(Math.abs(t.value))}</div>
       <div style="display:flex;gap:3px"><button class="btn-icon" onclick="openTxModal('${t.id}')" title="Editar">✏️</button><button class="btn-icon" onclick="deleteTx('${t.id}')" title="Excluir">🗑️</button></div>
     </div>`;
   }).join(''):`<div class="empty-st"><div class="empty-ico">🔍</div><div class="empty-txt">Nenhum lançamento encontrado.</div></div>`;
