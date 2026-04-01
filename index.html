@@ -103,6 +103,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
 .chart-title{font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;margin-bottom:14px}
 .chart-wrap{position:relative;height:190px}
+.chart-tab-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:10.5px;font-family:'DM Sans',sans-serif;color:var(--text2);cursor:pointer;transition:all .15s}
+.chart-tab-btn:hover{border-color:var(--accent);color:var(--accent)}
+.chart-tab-btn.active{background:rgba(94,234,212,.12);border-color:rgba(94,234,212,.4);color:var(--accent)}
 /* SECTION */
 .sec-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:18px}
 .sec-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
@@ -419,8 +422,29 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="card c-orange"><div class="card-ico">🎲</div><div class="card-lbl">Despesas Variáveis</div><div class="card-val" id="dVar" style="color:var(--accent3)">R$ 0</div><div class="card-sub2">competência do mês</div><div class="card-avg" id="dVarAvg"></div></div>
       </div>
       <div class="charts2">
-        <div class="chart-card"><div class="chart-title">Despesas por Categoria</div><div class="chart-wrap"><canvas id="catChart"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Fixo vs Variável</div><div class="chart-wrap"><canvas id="typeChart"></canvas></div></div>
+        <!-- CAT CHART: radar + bar tabs -->
+        <div class="chart-card" id="catChartCard">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div class="chart-title" style="margin-bottom:0">Despesas por Categoria</div>
+            <div style="display:flex;gap:4px">
+              <button class="chart-tab-btn active" id="catTabRadar" onclick="setCatTab('radar')">🕸 Radar</button>
+              <button class="chart-tab-btn" id="catTabDonut" onclick="setCatTab('donut')">🍩 Donut</button>
+              <button class="chart-tab-btn" id="catTabBar" onclick="setCatTab('bar')">📊 Barras</button>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:230px"><canvas id="catChart"></canvas></div>
+        </div>
+        <!-- TYPE CHART: fixed vs variable with category drill-down -->
+        <div class="chart-card" id="typeChartCard">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div class="chart-title" style="margin-bottom:0">Fixo vs Variável</div>
+            <div style="display:flex;gap:4px">
+              <button class="chart-tab-btn active" id="typeTabDonut" onclick="setTypeTab('donut')">🍩 Donut</button>
+              <button class="chart-tab-btn" id="typeTabBar" onclick="setTypeTab('bar')">📊 Barras</button>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:230px"><canvas id="typeChart"></canvas></div>
+        </div>
       </div>
       <div class="sec-card">
         <div class="sec-hdr">
@@ -917,6 +941,131 @@ let modalTxType = 'expense';
 let txFilterState = 'all';
 let instTabState  = 'active';
 let catChartI=null, typeChartI=null, flowChartI=null;
+let catTabMode='radar', typeTabMode='donut';
+let lastCatData=[], lastTypeData={fixed:0,variable:0};
+
+window.setCatTab=function(mode){
+  catTabMode=mode;
+  document.querySelectorAll('#catChartCard .chart-tab-btn').forEach(b=>b.classList.remove('active'));
+  const map={radar:'catTabRadar',donut:'catTabDonut',bar:'catTabBar'};
+  const el=document.getElementById(map[mode]); if(el) el.classList.add('active');
+  renderCatChart(lastCatData);
+};
+
+window.setTypeTab=function(mode){
+  typeTabMode=mode;
+  document.querySelectorAll('#typeChartCard .chart-tab-btn').forEach(b=>b.classList.remove('active'));
+  const map={donut:'typeTabDonut',bar:'typeTabBar'};
+  const el=document.getElementById(map[mode]); if(el) el.classList.add('active');
+  renderTypeChart(lastTypeData.fixed, lastTypeData.variable);
+};
+
+function renderCatChart(cats){
+  lastCatData=cats;
+  const totalExp=cats.reduce((s,c)=>s+c[1],0);
+  if(catChartI)catChartI.destroy();
+  if(!cats.length) return;
+  const labels=cats.map(c=>c[0]);
+  const data=cats.map(c=>c[1]);
+  const colors=cats.map(c=>catColor(c[0]));
+  const onClickCat=(evt,els)=>{ if(els.length){filterDashByCategory(labels[els[0].index]);} };
+
+  if(catTabMode==='radar'){
+    catChartI=new Chart(document.getElementById('catChart').getContext('2d'),{
+      type:'radar',
+      data:{labels,datasets:[{label:'R$',data,backgroundColor:colors.map(c=>c+'33'),borderColor:colors,borderWidth:2,pointBackgroundColor:colors,pointRadius:4,pointHoverRadius:7}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        onClick:onClickCat,
+        scales:{r:{grid:{color:'rgba(255,255,255,.07)'},angleLines:{color:'rgba(255,255,255,.07)'},pointLabels:{color:'#7a84a0',font:{family:'DM Sans',size:10}},ticks:{display:false,beginAtZero:true}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const pct=totalExp>0?((ctx.raw/totalExp)*100).toFixed(1):0;return ' '+fmtBRL(ctx.raw)+' ('+pct+'%)';}}}},
+      }
+    });
+  } else if(catTabMode==='donut'){
+    catChartI=new Chart(document.getElementById('catChart').getContext('2d'),{
+      type:'doughnut',
+      data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#12151c',hoverOffset:8}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'58%',
+        onClick:onClickCat,
+        plugins:{
+          legend:{position:'right',labels:{color:'#eef0f8',font:{family:'DM Sans',size:11},boxWidth:10,padding:8,generateLabels(chart){return chart.data.labels.map((lbl,i)=>{const val=chart.data.datasets[0].data[i];const pct=totalExp>0?((val/totalExp)*100).toFixed(1):0;return{text:lbl+'  '+fmtBRL(val)+' ('+pct+'%)',fillStyle:chart.data.datasets[0].backgroundColor[i],fontColor:'#eef0f8',hidden:false,index:i};});}}},
+          tooltip:{callbacks:{label:ctx=>{const pct=totalExp>0?((ctx.raw/totalExp)*100).toFixed(1):0;return ' '+ctx.label+': '+fmtBRL(ctx.raw)+' ('+pct+'%)';}}}
+        }
+      }
+    });
+  } else {
+    catChartI=new Chart(document.getElementById('catChart').getContext('2d'),{
+      type:'bar',
+      data:{labels,datasets:[{label:'Valor',data,backgroundColor:colors,borderRadius:6,borderSkipped:false}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        onClick:onClickCat,
+        scales:{x:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#7a84a0',font:{size:10},callback:v=>fmtBRL(v)}},y:{grid:{display:false},ticks:{color:'#eef0f8',font:{family:'DM Sans',size:10}}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const pct=totalExp>0?((ctx.raw/totalExp)*100).toFixed(1):0;return ' '+fmtBRL(ctx.raw)+' ('+pct+'%)';}}}},
+      }
+    });
+  }
+}
+
+function renderTypeChart(fixed,variable){
+  lastTypeData={fixed,variable};
+  if(typeChartI)typeChartI.destroy();
+  const typeTotal=fixed+variable;
+  const labels=['Fixo','Variavel'];
+  const data=[fixed,variable];
+  const colors=['#fbbf24','#fb923c'];
+  const onClickType=(evt,els)=>{ if(els.length){filterDashByType(els[0].index===0?'fixed':'variable');} };
+
+  if(typeTabMode==='donut'){
+    typeChartI=new Chart(document.getElementById('typeChart').getContext('2d'),{
+      type:'doughnut',
+      data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#12151c',hoverOffset:8}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'62%',
+        onClick:onClickType,
+        plugins:{
+          legend:{position:'right',labels:{color:'#eef0f8',font:{family:'DM Sans',size:11},boxWidth:10,padding:10,generateLabels(chart){return chart.data.labels.map((lbl,i)=>{const val=chart.data.datasets[0].data[i];const pct=typeTotal>0?((val/typeTotal)*100).toFixed(1):0;return{text:lbl+'  '+fmtBRL(val)+' ('+pct+'%)',fillStyle:chart.data.datasets[0].backgroundColor[i],fontColor:'#eef0f8',hidden:false,index:i};});}}},
+          tooltip:{callbacks:{label:ctx=>{const pct=typeTotal>0?((ctx.raw/typeTotal)*100).toFixed(1):0;return ' '+ctx.label+': '+fmtBRL(ctx.raw)+' ('+pct+'%)';}}}
+        }
+      }
+    });
+  } else {
+    typeChartI=new Chart(document.getElementById('typeChart').getContext('2d'),{
+      type:'bar',
+      data:{labels,datasets:[{label:'Valor',data,backgroundColor:colors,borderRadius:8,borderSkipped:false,barThickness:48}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        onClick:onClickType,
+        scales:{
+          x:{grid:{display:false},ticks:{color:'#eef0f8',font:{family:'DM Sans',size:12}}},
+          y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#7a84a0',font:{size:10},callback:v=>fmtBRL(v)}}
+        },
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const pct=typeTotal>0?((ctx.raw/typeTotal)*100).toFixed(1):0;return ' '+fmtBRL(ctx.raw)+' ('+pct+'%)';}}}},
+      }
+    });
+  }
+}
+
+function filterDashByCategory(cat){
+  const el=document.getElementById('txCatFilter');
+  if(el){ el.value=cat; }
+  txFilterState='expense';
+  document.querySelectorAll('[id^="tf-"]').forEach(b=>b.classList.remove('active'));
+  const expBtn=document.getElementById('tf-expense'); if(expBtn) expBtn.classList.add('active');
+  gotoPage('transactions');
+  if(typeof applyTxFilters==='function') applyTxFilters();
+  showToast('Filtrando: '+cat,'info');
+}
+
+function filterDashByType(type){
+  txFilterState=type;
+  document.querySelectorAll('[id^="tf-"]').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById(type==='fixed'?'tf-fixed':'tf-variable'); if(btn) btn.classList.add('active');
+  gotoPage('transactions');
+  if(typeof applyTxFilters==='function') applyTxFilters();
+  showToast('Filtrando: '+(type==='fixed'?'Fixo':'Variavel'),'info');
+}
 
 const MONTHS   = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MONTHS_S = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -1376,69 +1525,13 @@ function renderDashboard(){
 
   renderRecentList();
 
-  // CAT CHART with value + %
+  // CAT CHART - delegate to tabbed renderer
   const catMap={}; txs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.value;});
   const cats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const totalExp=cats.reduce((s,c)=>s+c[1],0);
-  if(catChartI)catChartI.destroy();
-  if(cats.length){
-    catChartI=new Chart($('catChart').getContext('2d'),{
-      type:'doughnut',
-      data:{
-        labels:cats.map(c=>c[0]),
-        datasets:[{data:cats.map(c=>c[1]),backgroundColor:cats.map(c=>catColor(c[0])),borderWidth:2,borderColor:'#12151c'}]
-      },
-      options:{
-        responsive:true,maintainAspectRatio:false,cutout:'58%',
-        plugins:{
-          legend:{
-            position:'right',
-            labels:{
-              color:'#eef0f8',font:{family:'DM Sans',size:11},boxWidth:10,padding:10,
-              generateLabels(chart){
-                return chart.data.labels.map((lbl,i)=>{
-                  const val=chart.data.datasets[0].data[i];
-                  const pct=totalExp>0?((val/totalExp)*100).toFixed(1):0;
-                  return{text:`${lbl}  ${fmtBRL(val)} (${pct}%)`,fillStyle:chart.data.datasets[0].backgroundColor[i],fontColor:'#eef0f8',hidden:false,index:i};
-                });
-              }
-            }
-          },
-          tooltip:{callbacks:{label:ctx=>{const pct=totalExp>0?((ctx.raw/totalExp)*100).toFixed(1):0; return ` ${ctx.label}: ${fmtBRL(ctx.raw)} (${pct}%)`;}}}
-        }
-      }
-    });
-  }
+  renderCatChart(cats);
 
-  // TYPE CHART with value + %
-  if(typeChartI)typeChartI.destroy();
-  const typeTotal=fixed+variable;
-  typeChartI=new Chart($('typeChart').getContext('2d'),{
-    type:'doughnut',
-    data:{
-      labels:['Fixo','Variável'],
-      datasets:[{data:[fixed,variable],backgroundColor:['#fbbf24','#fb923c'],borderWidth:2,borderColor:'#12151c'}]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,cutout:'58%',
-      plugins:{
-        legend:{
-          position:'right',
-          labels:{
-            color:'#eef0f8',font:{family:'DM Sans',size:11},boxWidth:10,padding:10,
-            generateLabels(chart){
-              return chart.data.labels.map((lbl,i)=>{
-                const val=chart.data.datasets[0].data[i];
-                const pct=typeTotal>0?((val/typeTotal)*100).toFixed(1):0;
-                return{text:`${lbl}  ${fmtBRL(val)} (${pct}%)`,fillStyle:chart.data.datasets[0].backgroundColor[i],fontColor:'#eef0f8',hidden:false,index:i};
-              });
-            }
-          }
-        },
-        tooltip:{callbacks:{label:ctx=>{const pct=typeTotal>0?((ctx.raw/typeTotal)*100).toFixed(1):0; return ` ${ctx.label}: ${fmtBRL(ctx.raw)} (${pct}%)`;}}}
-      }
-    }
-  });
+  // TYPE CHART - delegate to tabbed renderer
+  renderTypeChart(fixed, variable);
 }
 
 // TX PAGE
