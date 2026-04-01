@@ -45,7 +45,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .spinner{width:38px;height:38px;border:3px solid var(--surface3);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* APP */
-.app-wrap{display:flex;min-height:100vh;position:relative;z-index:1;overflow-x:hidden}
+.app-wrap{display:flex;min-height:100vh;position:relative;z-index:1}
 /* SIDEBAR */
 .sidebar{width:var(--sidebar);min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:22px 0;position:fixed;top:0;left:0;bottom:0;z-index:100}
 .logo{padding:0 18px 22px;border-bottom:1px solid var(--border)}
@@ -279,9 +279,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   .charts2{grid-template-columns:1fr}
   .sidebar{transform:translateX(-100%);transition:transform .28s ease;z-index:150}
   .sidebar.open{transform:translateX(0)}
-  .ham-btn{display:none!important}
-  .app-wrap{flex-direction:column}
-  .main{margin-left:0;padding:0 0 72px;flex:1;overflow-y:auto;height:calc(100vh - 64px)}
+  .ham-btn{display:flex}
+  .main{margin-left:0;padding:62px 12px 80px}
   .page-title{font-size:20px}
   .card-val{font-size:17px}
   .card-lbl{font-size:9px}
@@ -291,14 +290,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   .sec-hdr{flex-direction:column;align-items:flex-start;gap:10px}
   .filter-bar{gap:5px;padding:10px 12px}
   .filter-btn{font-size:10.5px;padding:4px 9px}
-  .page-hdr{display:none}
+  .page-hdr{flex-direction:column;align-items:flex-start}
   .page-hdr .btn{width:100%}
-  /* Mobile bottom nav */
-  .mob-nav{display:flex}
-  .mob-topbar{display:flex}
-  /* Mobile page padding */
-  .page.active{padding:0}
-  .mob-page-content{padding:12px 14px 8px}
 }
 @media(max-width:640px){
   .cg4{grid-template-columns:1fr 1fr}
@@ -311,69 +304,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   .tx-amt{font-size:12px}
   .modal{padding:20px 16px}
   .form-row,.form-row-3{grid-template-columns:1fr}
-}
-/* MOBILE BOTTOM NAV */
-.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;background:var(--surface);border-top:1px solid var(--border2);padding:0 4px;padding-bottom:env(safe-area-inset-bottom,0);height:64px;align-items:center;justify-content:space-around;gap:2px;box-shadow:0 -4px 24px rgba(0,0,0,.4)}
-.mob-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:1;height:56px;border:none;background:none;cursor:pointer;border-radius:12px;transition:all .15s;color:var(--text3);padding:4px 2px;font-family:'DM Sans',sans-serif;position:relative}
-.mob-nav-btn.active{color:var(--accent)}
-.mob-nav-btn .mnb-ico{font-size:20px;line-height:1;transition:transform .15s}
-.mob-nav-btn.active .mnb-ico{transform:scale(1.15)}
-.mob-nav-btn .mnb-lbl{font-size:9px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;transition:color .15s}
-.mob-nav-fab{width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent4));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;color:#0a0c10;font-weight:700;box-shadow:0 4px 18px rgba(94,234,212,.4);transition:all .18s;flex-shrink:0;margin-top:-18px}
-.mob-nav-fab:active{transform:scale(.92)}
-/* MOBILE TOPBAR */
-.mob-topbar{display:none;position:sticky;top:0;left:0;right:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px 10px;align-items:center;justify-content:space-between}
-.mob-topbar-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800}
-.mob-topbar-right{display:flex;align-items:center;gap:8px}
-.mob-month-nav{display:flex;align-items:center;gap:4px;background:var(--surface2);border-radius:20px;padding:3px 6px;border:1px solid var(--border)}
-.mob-month-btn{background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;padding:1px 4px;line-height:1;border-radius:4px}
-.mob-month-btn:active{background:var(--surface3)}
-.mob-month-lbl{font-size:11px;font-weight:600;color:var(--text);min-width:52px;text-align:center}
-/* MORE SHEET */
-.mob-more-sheet{display:block;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border2);padding:16px 16px calc(72px + env(safe-area-inset-bottom,0));transform:translateY(110%);transition:transform .32s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(0,0,0,.5);pointer-events:none}
-.mob-more-sheet.open{transform:translateY(0);pointer-events:all}
-.mob-sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 18px}
-.mob-sheet-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.mob-sheet-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
-.mob-sheet-item:active{background:var(--surface3);transform:scale(.96)}
-.mob-sheet-ico{font-size:22px;line-height:1}
-.mob-sheet-lbl{font-size:10px;color:var(--text2);font-weight:500;text-align:center}
-.mob-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:350;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .3s}
-.mob-overlay.show{opacity:1;pointer-events:all}
-
-/* MOBILE EXTRA POLISH */
-@media(max-width:900px){
-  .mob-page-content{padding:12px 14px 0}
-  /* Compact summary cards in dashboard */
-  .cg4{gap:8px;margin-bottom:10px}
-  .cg3{gap:8px;margin-bottom:10px}
-  .card{padding:12px 11px;border-radius:12px}
-  .card-val{font-size:16px}
-  .card-avg{display:none}
-  /* Charts smaller */
-  .charts2{gap:8px;margin-bottom:10px}
-  .chart-card{padding:12px}
-  .chart-wrap{height:200px!important}
-  /* Section cards */
-  .sec-card{border-radius:12px;margin-bottom:10px}
-  .sec-hdr{padding:11px 14px}
-  .tx-item{padding:11px 14px}
-  /* Toast at bottom above nav */
-  .toast{bottom:76px;right:12px;left:12px;transform:translateY(160%)}
-  .toast.show{transform:translateY(0)}
-  /* AI panel compact */
-  #insightsPanel{margin-bottom:10px;border-radius:12px}
-  /* Hide AI refresh hint text on mobile */
-  /* Topbar when sidebar is hidden */
-  .sidebar{top:0}
-  /* main scroll area */
-  .main{overflow-y:auto;height:calc(100vh - 64px);position:relative}
-  /* page fills main */
-  .page.active{min-height:calc(100vh - 128px)}
-}
-@media(max-width:640px){
-  .chart-wrap{height:180px!important}
-  .mob-topbar{padding:10px 14px 8px}
 }
 </style>
 </head>
@@ -418,56 +348,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <div class="app-wrap" id="scApp" style="display:none">
 <button class="ham-btn" id="hamBtn" onclick="toggleSidebar()">☰</button>
 <div class="sidebar-overlay" id="sideOverlay" onclick="closeSidebar()"></div>
-
-<!-- MOBILE TOPBAR -->
-<div class="mob-topbar" id="mobTopbar">
-  <div style="display:flex;align-items:center;gap:10px">
-    <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent4));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">💚</div>
-    <div class="mob-topbar-title" id="mobPageTitle">Dashboard</div>
-  </div>
-  <div class="mob-topbar-right">
-    <div class="mob-month-nav">
-      <button class="mob-month-btn" onclick="changeMonth(-1)">‹</button>
-      <div class="mob-month-lbl" id="mobMonthLbl">—</div>
-      <button class="mob-month-btn" onclick="changeMonth(1)">›</button>
-    </div>
-  </div>
-</div>
-
-<!-- MOBILE MORE SHEET OVERLAY -->
-<div class="mob-overlay" id="mobOverlay" onclick="closeMobMore()"></div>
-
-<!-- MOBILE MORE SHEET -->
-<div class="mob-more-sheet" id="mobMoreSheet">
-  <div class="mob-sheet-handle"></div>
-  <div class="mob-sheet-grid">
-    <div class="mob-sheet-item" onclick="gotoPageMob('installments')"><div class="mob-sheet-ico">🔄</div><div class="mob-sheet-lbl">Parcelas</div></div>
-    <div class="mob-sheet-item" onclick="gotoPageMob('import')"><div class="mob-sheet-ico">📸</div><div class="mob-sheet-lbl">Importar</div></div>
-    <div class="mob-sheet-item" onclick="gotoPageMob('pix')"><div class="mob-sheet-ico">⚡</div><div class="mob-sheet-lbl">Pix</div></div>
-    <div class="mob-sheet-item" onclick="gotoPageMob('cashflow')"><div class="mob-sheet-ico">📈</div><div class="mob-sheet-lbl">Fluxo</div></div>
-    <div class="mob-sheet-item" onclick="gotoPageMob('shared')"><div class="mob-sheet-ico">💑</div><div class="mob-sheet-lbl">Casal</div></div>
-    <div class="mob-sheet-item" onclick="gotoPageMob('credit')"><div class="mob-sheet-ico">💳</div><div class="mob-sheet-lbl">Cartão</div></div>
-    <div class="mob-sheet-item" onclick="gotoPageMob('settings')"><div class="mob-sheet-ico">⚙️</div><div class="mob-sheet-lbl">Config</div></div>
-    <div class="mob-sheet-item" onclick="doLogout()"><div class="mob-sheet-ico">🚪</div><div class="mob-sheet-lbl">Sair</div></div>
-  </div>
-</div>
-
-<!-- MOBILE BOTTOM NAV -->
-<nav class="mob-nav" id="mobNav">
-  <button class="mob-nav-btn active" id="mnb-dashboard" onclick="gotoPageMob('dashboard')">
-    <span class="mnb-ico">📊</span><span class="mnb-lbl">Início</span>
-  </button>
-  <button class="mob-nav-btn" id="mnb-transactions" onclick="gotoPageMob('transactions')">
-    <span class="mnb-ico">💸</span><span class="mnb-lbl">Gastos</span>
-  </button>
-  <button class="mob-nav-fab" onclick="openTxModal()" title="Novo lançamento">+</button>
-  <button class="mob-nav-btn" id="mnb-budget" onclick="gotoPageMob('budget')">
-    <span class="mnb-ico">🎯</span><span class="mnb-lbl">Metas</span>
-  </button>
-  <button class="mob-nav-btn" id="mnb-more" onclick="openMobMore()">
-    <span class="mnb-ico">☰</span><span class="mnb-lbl">Mais</span>
-  </button>
-</nav>
   <nav class="sidebar" id="sidebar">
     <div class="logo">
       <div class="logo-wrap">
@@ -514,7 +394,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div><div class="page-title">Dashboard</div><div class="page-sub" id="dashSub">Visão geral do mês</div></div>
         <button class="btn btn-primary" onclick="openTxModal()">+ Novo Lançamento</button>
       </div>
-      <div class="mob-page-content">
       <!-- AI INSIGHTS PANEL -->
       <div id="insightsPanel" style="margin-bottom:18px;border-radius:var(--radius);overflow:hidden;border:1px solid rgba(94,234,212,.2);background:linear-gradient(135deg,rgba(94,234,212,.06),rgba(96,165,250,.04))">
         <div style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(94,234,212,.12)">
@@ -579,7 +458,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         </div>
         <div class="tx-list" id="recentList"><div class="empty-st"><div class="empty-ico">📭</div><div class="empty-txt">Nenhum lançamento ainda.<br>Clique em <b>+ Novo Lançamento</b> para começar!</div></div></div>
       </div>
-      </div><!-- /mob-page-content -->
     </div>
     <!-- TRANSACTIONS -->
     <div class="page" id="page-transactions">
@@ -1340,7 +1218,7 @@ function setupUI(){
 
 // MONTH NAV
 window.changeMonth=function(d){ curMonth+=d; if(curMonth>11){curMonth=0;curYear++;} if(curMonth<0){curMonth=11;curYear--;} updateMonthLabel(); renderAll(); maybeAutoInsights(); };
-function updateMonthLabel(){ const lbl=`${MONTHS_S[curMonth]} ${curYear}`; $('mLabel').textContent=lbl; const mobLbl=document.getElementById('mobMonthLbl'); if(mobLbl) mobLbl.textContent=lbl; $('dashSub').textContent=`Visão geral de ${MONTHS[curMonth]} ${curYear}`; }
+function updateMonthLabel(){ $('mLabel').textContent=`${MONTHS_S[curMonth]} ${curYear}`; $('dashSub').textContent=`Visão geral de ${MONTHS[curMonth]} ${curYear}`; }
 function getMonthTx(){
   return userData.transactions.filter(t=>{
     // Use competency if set, otherwise fall back to date
@@ -1351,25 +1229,12 @@ function getMonthTx(){
 }
 
 // NAVIGATION
-const MOB_PAGE_TITLES={dashboard:'Dashboard',transactions:'Lançamentos',import:'Importar Fatura',installments:'Parcelamentos',pix:'Pix',budget:'Orçamento',cashflow:'Fluxo de Caixa',shared:'Casal',credit:'Cartão',settings:'Configurações'};
-const MOB_NAV_PAGES=['dashboard','transactions','budget'];
-
 window.gotoPage=function(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('page-'+name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>{ if(n.getAttribute('onclick')?.includes(name))n.classList.add('active'); });
   closeSidebar();
-  // Update mobile topbar title
-  const titleEl=document.getElementById('mobPageTitle');
-  if(titleEl) titleEl.textContent=MOB_PAGE_TITLES[name]||name;
-  // Update mobile bottom nav active state
-  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
-  const mnbEl=document.getElementById('mnb-'+name);
-  if(mnbEl) mnbEl.classList.add('active');
-  // Scroll to top on page change
-  const pageEl=document.getElementById('page-'+name);
-  if(pageEl) pageEl.scrollIntoView({behavior:'instant',block:'start'});
   if(name==='transactions'){ applyTxFilters(); }
   if(name==='budget')renderBudget();
   if(name==='credit')renderCredit();
@@ -1378,25 +1243,6 @@ window.gotoPage=function(name){
   if(name==='pix')renderPixPage();
   if(name==='import')renderImportPage();
   if(name==='settings')renderSettings();
-};
-
-window.gotoPageMob=function(name){
-  closeMobMore();
-  gotoPage(name);
-};
-
-window.openMobMore=function(){
-  const sheet=document.getElementById('mobMoreSheet');
-  const overlay=document.getElementById('mobOverlay');
-  if(sheet) sheet.classList.add('open');
-  if(overlay) overlay.classList.add('show');
-};
-
-window.closeMobMore=function(){
-  const sheet=document.getElementById('mobMoreSheet');
-  const overlay=document.getElementById('mobOverlay');
-  if(sheet) sheet.classList.remove('open');
-  if(overlay) overlay.classList.remove('show');
 };
 
 // TX MODAL
