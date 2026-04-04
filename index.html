@@ -2537,9 +2537,8 @@ function renderPixPage(){
   balEl.className='card-val '+(bal>=0?'pos':'neg');
   $('pixOutCt').textContent=`${monthSent.length} transações`;
   $('pixInCt').textContent=`${monthRecv.length} transações`;
-  // List = all pix (not filtered by month), sorted by date
-  const allTxs=userData.transactions.filter(t=>t.payment==='pix');
-  let txs=[...allTxs].sort((a,b)=>b.date.localeCompare(a.date));
+  // List = pix do mês selecionado, ordenado por data
+  let txs=[...monthTxs].sort((a,b)=>b.date.localeCompare(a.date));
   if(pixFilter==='out') txs=txs.filter(t=>t.type==='expense');
   if(pixFilter==='in') txs=txs.filter(t=>t.type==='income');
   if(search) txs=txs.filter(t=>(t.desc+' '+t.category).toLowerCase().includes(search));
