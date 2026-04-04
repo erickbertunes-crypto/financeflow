@@ -2915,7 +2915,7 @@ window.confirmXlsx = async function(){
         date: item.date, competency: comp,
         category: item.category||'Classificar',
         expenseType: item.expenseType||'variable',
-        payment:'card', status:'paid', type:'expense',
+        payment: item.payment||'card', status:'paid', type:'expense',
         installment: !!item.is_installment,
         ...(item.is_installment?{installCurrent:item.install_current||1,installTotal:item.install_total||1}:{})
       };
