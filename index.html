@@ -2703,6 +2703,7 @@ function doParseXlsx(data, filename){
       const valRaw  = findCol(row,'valor','value','val','preco','preco');
       const cat     = String(findCol(row,'categoria','cat','category')||'').trim();
       const tipo    = String(findCol(row,'tipo','type')||'variavel').toLowerCase().trim();
+      const pagRaw  = String(findCol(row,'pagamento','pagament','payment','pag')||'').toLowerCase().trim();
       const parc    = String(findCol(row,'parcel','parcela','install')||'nao').toLowerCase().trim();
 
       if(!desc || !valRaw) continue;
@@ -2748,8 +2749,18 @@ function doParseXlsx(data, filename){
       const finalCat = cat || guessCategoryFromHistory(desc) || 'Classificar';
       const expType  = (tipo==='fixo'||tipo==='fixed') ? 'fixed' : 'variable';
 
+      // Map payment method
+      let payment = 'card'; // default
+      if(pagRaw){
+        if(pagRaw.includes('pix'))                              payment='pix';
+        else if(pagRaw.includes('debit')||pagRaw.includes('debito')||pagRaw.includes('déb')) payment='debit';
+        else if(pagRaw.includes('dinheiro')||pagRaw.includes('cash')||pagRaw.includes('especie')) payment='cash';
+        else if(pagRaw.includes('transfer')||pagRaw.includes('ted')||pagRaw.includes('doc')) payment='transfer';
+        else if(pagRaw.includes('cart')||pagRaw.includes('card')||pagRaw.includes('cred')) payment='card';
+      }
+
       parsed.push({desc, value, date, category:finalCat, expenseType:expType,
-        payment:'card', is_installment:isInst,
+        payment, is_installment:isInst,
         install_current:instCur, install_total:instTot});
     }
 
@@ -2945,9 +2956,9 @@ window.downloadModelo=function(){
 
     // ── Aba 1: Lançamentos (apenas cabeçalho, pronto para preencher) ──
     const ws1=XL.utils.aoa_to_sheet([[
-      'Data da Compra','Descrição','Valor (R$)','Categoria','Tipo','Parcelado'
+      'Data da Compra','Descrição','Valor (R$)','Categoria','Tipo','Pagamento','Parcelado'
     ]]);
-    ws1['!cols']=[{wch:16},{wch:34},{wch:12},{wch:22},{wch:12},{wch:12}];
+    ws1['!cols']=[{wch:16},{wch:34},{wch:12},{wch:22},{wch:12},{wch:16},{wch:12}];
     XL.utils.book_append_sheet(wb,ws1,'Lançamentos');
 
     // ── Aba 2: Categorias (sempre com as categorias atuais do app) ──
@@ -2973,6 +2984,7 @@ window.downloadModelo=function(){
       ['CAMPOS OPCIONAIS'],
       ['Categoria','Use os nomes exatos da aba "Categorias". Se vazio, o app categoriza pelo histórico.'],
       ['Tipo','Digite:  fixo   ou   variavel'],
+      ['Pagamento','cartao   /   pix   /   debito   /   dinheiro   /   transferencia   (padrão: cartao)'],
       ['Parcelado','nao   /   1/12   /   3/6  (parcela atual / total de parcelas)'],
       [''],
       ['DICAS'],
