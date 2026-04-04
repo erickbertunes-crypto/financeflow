@@ -566,7 +566,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div><div class="page-title">Fluxo de Caixa</div><div class="page-sub">Entradas, saídas e evolução do patrimônio</div></div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid rgba(167,139,250,.3);border-radius:10px;padding:6px 12px">
-            <span style="font-size:11px;color:var(--text3);white-space:nowrap">💎 Patrimônio Inicial</span>
+            <span style="font-size:11px;color:var(--text3);white-space:nowrap">💰 Reserva Inicial</span>
             <input type="number" id="cfPatrimonio" placeholder="0,00" step="0.01" min="0" oninput="savePatrimonio()" style="background:transparent;border:none;outline:none;color:var(--accent5);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;width:110px">
           </div>
           <select class="form-input" id="cfYear" style="width:auto;padding:6px 12px;font-size:12px" onchange="renderCashflow()"></select>
@@ -576,7 +576,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="chart-card"><div class="chart-title">Receitas vs Despesas</div><div class="chart-wrap" style="height:220px"><canvas id="flowChart"></canvas></div></div>
       </div>
       <div class="charts2" style="grid-template-columns:1fr">
-        <div class="chart-card"><div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">Evolução do Patrimônio<span style="font-size:11px;color:var(--text3);font-weight:400">acumulado mês a mês</span></div><div class="chart-wrap" style="height:200px"><canvas id="patriChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">Evolução da Reserva<span style="font-size:11px;color:var(--text3);font-weight:400">acumulado mês a mês</span></div><div class="chart-wrap" style="height:200px"><canvas id="patriChart"></canvas></div></div>
       </div>
       <div class="sec-card">
         <div class="sec-hdr"><div class="sec-title">Resumo Anual</div></div>
@@ -1121,12 +1121,12 @@ const txCol  =()=>collection(db,'users',curUser.uid,'transactions');
 
 async function loadUserData(){
   const snap=await getDoc(userRef());
-  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.monthlyReserves=d.monthlyReserves||{}; userData.patrimonio=d.patrimonio||0; userData.categories=d.categories||[]; }
+  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.monthlyReserves=d.monthlyReserves||{}; userData.monthlyRendimentos=d.monthlyRendimentos||{}; userData.patrimonio=d.patrimonio||0; userData.categories=d.categories||[]; }
   const txSnap=await getDocs(txCol());
   userData.transactions=[];
   txSnap.forEach(d=>userData.transactions.push({id:d.id,...d.data()}));
 }
-async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,monthlyReserves:userData.monthlyReserves||{},patrimonio:userData.patrimonio||0,categories:userData.categories||[]},{merge:true}); }
+async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,monthlyReserves:userData.monthlyReserves||{},monthlyRendimentos:userData.monthlyRendimentos||{},patrimonio:userData.patrimonio||0,categories:userData.categories||[]},{merge:true}); }
 async function fsAddTx(tx){ const{id,...data}=tx; const ref=await addDoc(txCol(),{...data,createdAt:serverTimestamp()}); return ref.id; }
 async function fsUpdateTx(id,data){ await setDoc(doc(db,'users',curUser.uid,'transactions',id),data,{merge:true}); }
 async function fsDeleteTx(id){ await deleteDoc(doc(db,'users',curUser.uid,'transactions',id)); }
@@ -2071,9 +2071,26 @@ function getMonthReserve(year, m){
   return userData.reserve||0;
 }
 
+function getMonthRendimento(year, m){
+  const key=`${year}-${String(m+1).padStart(2,'0')}`;
+  if(userData.monthlyRendimentos && userData.monthlyRendimentos[key]!==undefined)
+    return userData.monthlyRendimentos[key];
+  return 0;
+}
+
+window.saveMonthRendimento=async function(m, el){
+  const val=parseFloat(el.value)||0;
+  if(!userData.monthlyRendimentos) userData.monthlyRendimentos={};
+  const year=parseInt($('cfYear').value)||curYear;
+  const key=`${year}-${String(m+1).padStart(2,'0')}`;
+  userData.monthlyRendimentos[key]=val;
+  await saveSettings();
+  renderCashflow();
+};
+
 function renderCashflow(){
   const year=parseInt($('cfYear').value)||curYear;
-  const patrimonioInicial=parseFloat($('cfPatrimonio')?.value)||userData.patrimonio||0;
+  const reservaInicial=parseFloat($('cfPatrimonio')?.value)||userData.patrimonio||0;
 
   const monthly=MONTHS_S.map((_,m)=>{
     const txs=userData.transactions.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
@@ -2082,26 +2099,32 @@ function renderCashflow(){
     const va=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
     const tot=fi+va; const bal=inc-tot;
     const reserve=getMonthReserve(year,m);
+    const rendimento=getMonthRendimento(year,m);
     const hasData=inc>0||tot>0;
     const balAfterReserve=hasData&&reserve>0?bal-reserve:bal;
-    return{inc,fi,va,tot,bal,reserve,balAfterReserve,hasData};
+    return{inc,fi,va,tot,bal,reserve,rendimento,balAfterReserve,hasData};
   });
 
-  let running=patrimonioInicial;
-  const patrimonioMensal=monthly.map(m=>{
-    if(m.hasData){ running+=m.balAfterReserve; return running; }
-    return running;
+  // Reserva Acumulada = reservaInicial + cumsum(quanto_vou_reservar + rendimento_cdi)
+  let runningReserva=reservaInicial;
+  const reservaAcumulada=monthly.map(m=>{
+    if(m.hasData||m.reserve>0||m.rendimento>0){
+      runningReserva+=m.reserve+m.rendimento;
+    }
+    return runningReserva;
   });
 
   const tot=monthly.reduce((a,m)=>({
     inc:a.inc+m.inc,fi:a.fi+m.fi,va:a.va+m.va,
     tot:a.tot+m.tot,bal:a.bal+m.bal,
-    reserve:a.reserve+(m.hasData?m.reserve:0),
+    reserve:a.reserve+(m.hasData||m.reserve>0?m.reserve:0),
+    rendimento:a.rendimento+m.rendimento,
     balAfterReserve:a.balAfterReserve+m.balAfterReserve
-  }),{inc:0,fi:0,va:0,tot:0,bal:0,reserve:0,balAfterReserve:0});
+  }),{inc:0,fi:0,va:0,tot:0,bal:0,reserve:0,rendimento:0,balAfterReserve:0});
 
-  const finalPatrimonio=patrimonioMensal[11];
+  const finalReserva=reservaAcumulada[11];
   const anyReserve=monthly.some(m=>m.reserve>0);
+  const anyRendimento=monthly.some(m=>m.rendimento>0);
 
   $('cfTable').innerHTML=`
     <thead><tr><th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}<th>Ano</th></tr></thead>
@@ -2112,18 +2135,34 @@ function renderCashflow(){
       <tr class="subtotal"><td>Total Despesas</td>${monthly.map(m=>`<td class="${m.tot>0?'neg':''}" style="text-align:right">${m.tot?fmtBRL(-m.tot):'—'}</td>`).join('')}<td class="${tot.tot>0?'neg':''}" style="text-align:right">${tot.tot?fmtBRL(-tot.tot):'—'}</td></tr>
       <tr class="subtotal"><td>Saldo Bruto</td>${monthly.map(m=>`<td class="${m.bal>0?'pos':m.bal<0?'neg':''}" style="text-align:right">${m.bal?fmtBRL(m.bal):'—'}</td>`).join('')}<td class="${tot.bal>0?'pos':tot.bal<0?'neg':''}" style="text-align:right">${tot.bal?fmtBRL(tot.bal):'—'}</td></tr>
       <tr>
-        <td style="color:var(--accent);font-size:11px;font-weight:600">🏦 Reserva<br><span style="color:var(--text3);font-weight:400;font-size:10px">Clique p/ editar</span></td>
+        <td style="color:var(--yellow);font-size:11px;font-weight:600">💰 Quanto Vou Reservar<br><span style="color:var(--text3);font-weight:400;font-size:10px">Clique p/ editar</span></td>
         ${monthly.map((m,i)=>`<td style="text-align:right;padding:4px 2px">
           <input type="number" step="0.01" min="0"
             value="${m.reserve||''}"
             placeholder="0"
             onchange="saveMonthReserve(${i},this)"
-            style="width:72px;text-align:right;background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.25);border-radius:6px;padding:3px 5px;color:var(--accent);font-size:11px;font-family:'Syne',sans-serif;font-weight:600">
+            style="width:72px;text-align:right;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:3px 5px;color:var(--yellow);font-size:11px;font-family:'Syne',sans-serif;font-weight:600">
         </td>`).join('')}
         <td class="neg" style="text-align:right">${anyReserve?fmtBRL(-tot.reserve):'—'}</td>
       </tr>
       <tr class="subtotal"><td>Saldo Líquido</td>${monthly.map(m=>`<td class="${m.balAfterReserve>0?'pos':m.balAfterReserve<0?'neg':''}" style="text-align:right">${m.hasData?fmtBRL(m.balAfterReserve):'—'}</td>`).join('')}<td class="${tot.balAfterReserve>0?'pos':tot.balAfterReserve<0?'neg':''}" style="text-align:right">${fmtBRL(tot.balAfterReserve)}</td></tr>
-      <tr class="patrimonio"><td>💎 Patrimônio Acumulado<br><span style="font-size:10px;font-weight:400;color:var(--text3)">Início: ${fmtBRL(patrimonioInicial)}</span></td>${patrimonioMensal.map(v=>`<td class="purple" style="text-align:right">${fmtBRL(v)}</td>`).join('')}<td class="purple" style="text-align:right">${fmtBRL(finalPatrimonio)}</td></tr>
+      <tr>
+        <td style="color:var(--accent);font-size:11px;font-weight:600">📈 Rendimento CDI<br><span style="color:var(--text3);font-weight:400;font-size:10px">Quanto a reserva rendeu</span></td>
+        ${monthly.map((m,i)=>{
+          const prevReserva=i===0?reservaInicial:reservaAcumulada[i-1];
+          const pct=prevReserva>0&&m.rendimento>0?(m.rendimento/prevReserva*100).toFixed(2):null;
+          return `<td style="text-align:right;padding:4px 2px">
+            <input type="number" step="0.01" min="0"
+              value="${m.rendimento||''}"
+              placeholder="0"
+              onchange="saveMonthRendimento(${i},this)"
+              style="width:72px;text-align:right;background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.25);border-radius:6px;padding:3px 5px;color:var(--accent);font-size:11px;font-family:'Syne',sans-serif;font-weight:600">
+            ${pct?`<div style="font-size:9px;color:var(--accent);opacity:.7;margin-top:1px">${pct}% a.m.</div>`:''}
+          </td>`;
+        }).join('')}
+        <td class="pos" style="text-align:right">${anyRendimento?fmtBRL(tot.rendimento):'—'}</td>
+      </tr>
+      <tr class="patrimonio"><td>💰 Reserva Acumulada<br><span style="font-size:10px;font-weight:400;color:var(--text3)">Início: ${fmtBRL(reservaInicial)}</span></td>${reservaAcumulada.map(v=>`<td class="purple" style="text-align:right">${fmtBRL(v)}</td>`).join('')}<td class="purple" style="text-align:right">${fmtBRL(finalReserva)}</td></tr>
     </tbody>`;
 
   if(flowChartI)flowChartI.destroy();
@@ -2132,20 +2171,20 @@ function renderCashflow(){
     data:{labels:MONTHS_S,datasets:[
       {label:'Receitas',data:monthly.map(m=>m.inc),backgroundColor:'rgba(94,234,212,.7)',borderRadius:5},
       {label:'Despesas',data:monthly.map(m=>m.tot),backgroundColor:'rgba(248,113,113,.7)',borderRadius:5},
-      {label:'Reserva',data:monthly.map(m=>m.hasData&&m.reserve>0?m.reserve:0),backgroundColor:'rgba(251,191,36,.45)',borderRadius:5}
+      {label:'Quanto Vou Reservar',data:monthly.map(m=>m.hasData&&m.reserve>0?m.reserve:0),backgroundColor:'rgba(251,191,36,.45)',borderRadius:5}
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.03)'}}}}
   });
 
-  // Patrimônio line chart
+  // Reserva Acumulada line chart
   if(patriChartI)patriChartI.destroy();
   patriChartI=new Chart($('patriChart').getContext('2d'),{
     type:'line',
     data:{
       labels:MONTHS_S,
       datasets:[{
-        label:'Patrimônio',
-        data:patrimonioMensal,
+        label:'Reserva Acumulada',
+        data:reservaAcumulada,
         borderColor:'#a78bfa',
         backgroundColor:'rgba(167,139,250,.12)',
         borderWidth:2.5,
@@ -2160,7 +2199,7 @@ function renderCashflow(){
       responsive:true,maintainAspectRatio:false,
       plugins:{
         legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>` Patrimônio: ${fmtBRL(ctx.raw)}`}}
+        tooltip:{callbacks:{label:ctx=>` Reserva: ${fmtBRL(ctx.raw)}`}}
       },
       scales:{
         x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},
@@ -2364,7 +2403,7 @@ async function renderShared(status){
   const partnerName=status.partnerName||status.partnerEmail;
   const myName=curUser.displayName||curUser.email.split('@')[0];
 
-  let partnerTxs=[], partnerPatrimonio=0, partnerMonthlyReserves={};
+  let partnerTxs=[], partnerPatrimonio=0, partnerMonthlyReserves={}, partnerMonthlyRendimentos={};
   try{
     const pTxSnap=await getDocs(collection(db,'users',partnerUid,'transactions'));
     pTxSnap.forEach(d=>partnerTxs.push({id:d.id,...d.data()}));
@@ -2372,20 +2411,26 @@ async function renderShared(status){
     if(pSettings.exists()){
       partnerPatrimonio=pSettings.data().patrimonio||0;
       partnerMonthlyReserves=pSettings.data().monthlyReserves||{};
+      partnerMonthlyRendimentos=pSettings.data().monthlyRendimentos||{};
     }
   }catch(e){ toast('⚠️','Não foi possível carregar os dados do parceiro.'); }
 
   const myTxs=userData.transactions;
   const myPatrimonio=userData.patrimonio||0;
   const myMonthlyReserves=userData.monthlyReserves||{};
+  const myMonthlyRendimentos=userData.monthlyRendimentos||{};
 
   // Get per-month reserve for a given reserves map and year/month
   function getReserveForMonth(reservesMap, yr, m){
     const key=`${yr}-${String(m+1).padStart(2,'0')}`;
     return reservesMap[key]!==undefined ? reservesMap[key] : 0;
   }
+  function getRendimentoForMonth(rendimentosMap, yr, m){
+    const key=`${yr}-${String(m+1).padStart(2,'0')}`;
+    return rendimentosMap[key]!==undefined ? rendimentosMap[key] : 0;
+  }
 
-  function calcYear(txs, patrimIni, reservesMap){
+  function calcYear(txs, patrimIni, reservesMap, rendimentosMap){
     const monthly=MONTHS_S.map((_,m)=>{
       const mt=txs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
       const inc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
@@ -2394,22 +2439,24 @@ async function renderShared(status){
       const exp=fi+va; const bal=inc-exp;
       const hasData=inc>0||exp>0;
       const reserve=hasData ? getReserveForMonth(reservesMap, year, m) : 0;
+      const rendimento=getRendimentoForMonth(rendimentosMap, year, m);
       const balAfterRes=bal-reserve;
-      return{inc,fi,va,exp,bal,reserve,balAfterRes,hasData};
+      return{inc,fi,va,exp,bal,reserve,rendimento,balAfterRes,hasData};
     });
-    let pat=patrimIni;
-    const patriAcc=monthly.map(m=>{ if(m.hasData) pat+=m.balAfterRes; return pat; });
+    let resAcc=patrimIni;
+    const reservaAcc=monthly.map(m=>{ if(m.hasData||m.reserve>0||m.rendimento>0) resAcc+=m.reserve+m.rendimento; return resAcc; });
     const totInc=monthly.reduce((s,m)=>s+m.inc,0);
     const totExp=monthly.reduce((s,m)=>s+m.exp,0);
     const totFi=monthly.reduce((s,m)=>s+m.fi,0);
     const totVa=monthly.reduce((s,m)=>s+m.va,0);
     const totRes=monthly.reduce((s,m)=>s+m.reserve,0);
+    const totRend=monthly.reduce((s,m)=>s+m.rendimento,0);
     const totBal=totInc-totExp;
-    return{monthly,patriAcc,totInc,totExp,totFi,totVa,totRes,totBal,finalPat:patriAcc[11]};
+    return{monthly,reservaAcc,totInc,totExp,totFi,totVa,totRes,totRend,totBal,finalPat:reservaAcc[11]};
   }
 
-  const me=calcYear(myTxs,myPatrimonio,myMonthlyReserves);
-  const pt=calcYear(partnerTxs,partnerPatrimonio,partnerMonthlyReserves);
+  const me=calcYear(myTxs,myPatrimonio,myMonthlyReserves,myMonthlyRendimentos);
+  const pt=calcYear(partnerTxs,partnerPatrimonio,partnerMonthlyReserves,partnerMonthlyRendimentos);
   const tog={
     monthly:MONTHS_S.map((_,m)=>({
       inc:me.monthly[m].inc+pt.monthly[m].inc,
@@ -2418,27 +2465,30 @@ async function renderShared(status){
       exp:me.monthly[m].exp+pt.monthly[m].exp,
       bal:me.monthly[m].bal+pt.monthly[m].bal,
       reserve:me.monthly[m].reserve+pt.monthly[m].reserve,
+      rendimento:me.monthly[m].rendimento+pt.monthly[m].rendimento,
       balAfterRes:me.monthly[m].balAfterRes+pt.monthly[m].balAfterRes
     })),
     totInc:me.totInc+pt.totInc, totExp:me.totExp+pt.totExp,
     totFi:me.totFi+pt.totFi, totVa:me.totVa+pt.totVa,
-    totRes:me.totRes+pt.totRes, totBal:me.totBal+pt.totBal,
+    totRes:me.totRes+pt.totRes, totRend:me.totRend+pt.totRend,
+    totBal:me.totBal+pt.totBal,
     finalPat:me.finalPat+pt.finalPat
   };
-  // Accumulate together patrimônio
-  let togPat=myPatrimonio+partnerPatrimonio;
-  const togPatAcc=MONTHS_S.map((_,m)=>{ togPat+=tog.monthly[m].balAfterRes; return togPat; });
-  tog.patriAcc=togPatAcc; tog.finalPat=togPatAcc[11];
+  // Accumulate together reserva
+  let togRes=myPatrimonio+partnerPatrimonio;
+  const togResAcc=MONTHS_S.map((_,m)=>{ togRes+=tog.monthly[m].reserve+tog.monthly[m].rendimento; return togRes; });
+  tog.reservaAcc=togResAcc; tog.finalPat=togResAcc[11];
 
   // Build a single clean table for one person
-  function buildTable(label,d,patriAcc,accentColor,hasReserve){
+  function buildTable(label,d,reservaAcc,accentColor,hasReserve){
     const v=(val,neg)=>`<td class="${val>0&&!neg?'pos':val<0||neg&&val!==0?'neg':''}" style="text-align:right">${val?fmtBRL(neg?-val:val):'—'}</td>`;
     const tot=(val,neg)=>`<td style="text-align:right;font-weight:700;color:${neg||val<0?'var(--red)':val>0?'var(--accent)':'var(--text3)'}">${val?fmtBRL(Math.abs(val)):'—'}</td>`;
+    const hasRend=d.totRend>0;
     return `
     <div class="sec-card" style="margin-bottom:14px">
       <div class="sec-hdr" style="background:${accentColor}18;border-bottom-color:${accentColor}30">
         <div class="sec-title" style="color:${accentColor}">👤 ${label}</div>
-        <div style="font-size:11px;color:var(--text3)">Receitas: <b style="color:var(--accent)">${fmtBRL(d.totInc)}</b> · Despesas: <b style="color:var(--red)">${fmtBRL(d.totExp)}</b> · Patrimônio: <b style="color:${accentColor}">${fmtBRL(d.finalPat)}</b></div>
+        <div style="font-size:11px;color:var(--text3)">Receitas: <b style="color:var(--accent)">${fmtBRL(d.totInc)}</b> · Despesas: <b style="color:var(--red)">${fmtBRL(d.totExp)}</b> · Reserva: <b style="color:${accentColor}">${fmtBRL(d.finalPat)}</b></div>
       </div>
       <div class="cf-wrap"><table class="cf-table">
         <thead><tr><th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}<th>Total</th></tr></thead>
@@ -2447,17 +2497,18 @@ async function renderShared(status){
           <tr><td style="padding-left:18px;color:var(--text3)">↳ Fixas</td>${d.monthly.map(m=>v(m.fi,true)).join('')}${tot(d.totFi,true)}</tr>
           <tr><td style="padding-left:18px;color:var(--text3)">↳ Variáveis</td>${d.monthly.map(m=>v(m.va,true)).join('')}${tot(d.totVa,true)}</tr>
           <tr class="subtotal"><td>O que Sobra</td>${d.monthly.map(m=>v(m.bal,false)).join('')}${tot(d.totBal,false)}</tr>
-          ${hasReserve?`<tr><td style="color:var(--text3)">(-) Reserva</td>${d.monthly.map(m=>`<td class="neg" style="text-align:right">${m.reserve?fmtBRL(-m.reserve):'—'}</td>`).join('')}<td style="text-align:right;color:var(--red)">${fmtBRL(-d.totRes)}</td></tr>`:''}
-          <tr class="patrimonio"><td>💎 Patrimônio</td>${patriAcc.map(v2=>`<td class="purple" style="text-align:right;font-size:10px">${fmtBRL(v2)}</td>`).join('')}<td class="purple" style="text-align:right">${fmtBRL(d.finalPat)}</td></tr>
+          ${hasReserve?`<tr><td style="color:var(--yellow)">(-) Quanto Reservou</td>${d.monthly.map(m=>`<td class="neg" style="text-align:right">${m.reserve?fmtBRL(-m.reserve):'—'}</td>`).join('')}<td style="text-align:right;color:var(--red)">${fmtBRL(-d.totRes)}</td></tr>`:''}
+          ${hasRend?`<tr><td style="color:var(--accent)">📈 Rendimento CDI</td>${d.monthly.map(m=>`<td class="pos" style="text-align:right">${m.rendimento?fmtBRL(m.rendimento):'—'}</td>`).join('')}<td style="text-align:right;color:var(--accent)">${fmtBRL(d.totRend)}</td></tr>`:''}
+          <tr class="patrimonio"><td>💰 Reserva Acumulada</td>${reservaAcc.map(v2=>`<td class="purple" style="text-align:right;font-size:10px">${fmtBRL(v2)}</td>`).join('')}<td class="purple" style="text-align:right">${fmtBRL(d.finalPat)}</td></tr>
         </tbody>
       </table></div>
     </div>`;
   }
 
   $('sharedTables').innerHTML=
-    buildTable(myName, me, me.patriAcc, 'var(--accent)', me.totRes>0)+
-    buildTable(partnerName, pt, pt.patriAcc, 'var(--accent2)', pt.totRes>0)+
-    buildTable('Consolidado — Juntos', tog, togPatAcc, 'var(--accent5)', me.totRes>0||pt.totRes>0);
+    buildTable(myName, me, me.reservaAcc, 'var(--accent)', me.totRes>0)+
+    buildTable(partnerName, pt, pt.reservaAcc, 'var(--accent2)', pt.totRes>0)+
+    buildTable('Consolidado — Juntos', tog, togResAcc, 'var(--accent5)', me.totRes>0||pt.totRes>0);
 
   $('sharedSub').textContent=`${myName} & ${partnerName} — ${year}`;
 }
