@@ -191,6 +191,30 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .tab{padding:6px 15px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);transition:all .2s;border:none;background:none;font-family:'DM Sans',sans-serif}
 .tab.active{background:var(--surface3);color:var(--text)}
 /* CASHFLOW TABLE */
+/* CASHFLOW CARDS — novo layout responsivo */
+.cf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
+.cf-month-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;position:relative;transition:border-color .2s}
+.cf-month-card:hover{border-color:var(--border2)}
+.cf-month-card.cf-negative{border-color:rgba(248,113,113,.25)}
+.cf-month-card.cf-positive{border-color:rgba(94,234,212,.2)}
+.cf-month-card.cf-empty{opacity:.4}
+.cf-month-lbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--text3);margin-bottom:9px}
+.cf-month-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11.5px}
+.cf-month-row-lbl{color:var(--text3);font-size:10.5px}
+.cf-month-bal{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;padding:6px 0;margin:6px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.cf-month-input{width:78px;text-align:right;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:var(--text2);font-size:11px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
+.cf-month-input:focus{border-color:var(--accent);background:rgba(94,234,212,.06)}
+.cf-month-input.inp-yellow:focus{border-color:var(--yellow);background:rgba(251,191,36,.06)}
+.cf-reserva{background:rgba(167,139,250,.08);border-radius:7px;padding:6px 8px;margin-top:7px;font-size:10.5px}
+.cf-reserva-lbl{color:var(--accent5);font-weight:600;font-size:10px;margin-bottom:4px}
+.cf-annual-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.cf-sum-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.cf-sum-lbl{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-weight:600;margin-bottom:5px}
+.cf-sum-val{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
+@media(max-width:1100px){.cf-grid{grid-template-columns:repeat(3,1fr)}.cf-annual-summary{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.cf-grid{grid-template-columns:repeat(2,1fr)}.cf-annual-summary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.cf-grid{grid-template-columns:1fr}.cf-annual-summary{grid-template-columns:1fr 1fr}}
+/* keep cf-table for shared flow */
 .cf-wrap{overflow-x:auto}
 .cf-table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
 .cf-table th{padding:9px 14px;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
@@ -597,9 +621,27 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="charts2" style="grid-template-columns:1fr">
         <div class="chart-card"><div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">Evolução da Reserva<span style="font-size:11px;color:var(--text3);font-weight:400">acumulado mês a mês</span></div><div class="chart-wrap" style="height:200px"><canvas id="patriChart"></canvas></div></div>
       </div>
-      <div class="sec-card">
-        <div class="sec-hdr"><div class="sec-title">Resumo Anual</div></div>
-        <div class="cf-wrap"><table class="cf-table" id="cfTable"></table></div>
+      <!-- ANNUAL SUMMARY CARDS -->
+      <div class="cf-annual-summary" id="cfAnnualSummary"></div>
+      <!-- MONTHLY CARDS GRID -->
+      <div class="sec-card" style="margin-bottom:14px">
+        <div class="sec-hdr"><div class="sec-title">Meses</div><div style="font-size:11px;color:var(--text3)">Clique nos campos para editar reserva e rendimento</div></div>
+        <div style="padding:14px 16px">
+          <div class="cf-grid" id="cfCardsGrid"></div>
+        </div>
+      </div>
+      <!-- CASHFLOW AI INSIGHTS -->
+      <div class="sec-card" style="margin-top:14px">
+        <div class="sec-hdr">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--accent5);display:inline-block"></span>
+            <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--accent5)">Análise Anual com IA</span>
+          </div>
+          <button onclick="refreshCashflowInsights()" id="cfInsightsBtn" style="background:none;border:1px solid rgba(167,139,250,.3);border-radius:8px;padding:4px 10px;color:var(--accent5);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">↻ Analisar</button>
+        </div>
+        <div id="cfInsightsContent" style="padding:14px 18px;min-height:60px;display:flex;align-items:center;justify-content:center">
+          <span style="font-size:12px;color:var(--text3)">Clique em <b style="color:var(--accent5)">↻ Analisar</b> para gerar uma análise do seu ano</span>
+        </div>
       </div>
     </div>
     <!-- SHARED CASHFLOW -->
@@ -2287,48 +2329,78 @@ function renderCashflow(){
     balAfterReserve:a.balAfterReserve+m.balAfterReserve
   }),{inc:0,fi:0,va:0,tot:0,bal:0,reserve:0,rendimento:0,balAfterReserve:0});
 
+  const totAnual=monthly.reduce((a,m)=>({
+    inc:a.inc+m.inc, tot:a.tot+m.tot, bal:a.bal+m.bal,
+    reserve:a.reserve+(m.hasData||m.reserve>0?m.reserve:0),
+    rendimento:a.rendimento+m.rendimento,
+    balAfterReserve:a.balAfterReserve+(m.hasData?m.balAfterReserve:0)
+  }),{inc:0,tot:0,bal:0,reserve:0,rendimento:0,balAfterReserve:0});
   const finalReserva=reservaAcumulada[11];
-  const anyReserve=monthly.some(m=>m.reserve>0);
-  const anyRendimento=monthly.some(m=>m.rendimento>0);
 
-  $('cfTable').innerHTML=`
-    <thead><tr><th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}<th>Ano</th></tr></thead>
-    <tbody>
-      <tr><td>Receitas</td>${monthly.map(m=>`<td class="${m.inc>0?'pos':''}" style="text-align:right">${m.inc?fmtBRL(m.inc):'—'}</td>`).join('')}<td class="pos" style="text-align:right">${tot.inc?fmtBRL(tot.inc):'—'}</td></tr>
-      <tr><td style="padding-left:20px;color:var(--text3)">↳ Desp. Fixas</td>${monthly.map(m=>`<td class="${m.fi>0?'neg':''}" style="text-align:right">${m.fi?fmtBRL(-m.fi):'—'}</td>`).join('')}<td class="${tot.fi>0?'neg':''}" style="text-align:right">${tot.fi?fmtBRL(-tot.fi):'—'}</td></tr>
-      <tr><td style="padding-left:20px;color:var(--text3)">↳ Desp. Variáveis</td>${monthly.map(m=>`<td class="${m.va>0?'neg':''}" style="text-align:right">${m.va?fmtBRL(-m.va):'—'}</td>`).join('')}<td class="${tot.va>0?'neg':''}" style="text-align:right">${tot.va?fmtBRL(-tot.va):'—'}</td></tr>
-      <tr class="subtotal"><td>Total Despesas</td>${monthly.map(m=>`<td class="${m.tot>0?'neg':''}" style="text-align:right">${m.tot?fmtBRL(-m.tot):'—'}</td>`).join('')}<td class="${tot.tot>0?'neg':''}" style="text-align:right">${tot.tot?fmtBRL(-tot.tot):'—'}</td></tr>
-      <tr class="subtotal"><td>Saldo Bruto</td>${monthly.map(m=>`<td class="${m.bal>0?'pos':m.bal<0?'neg':''}" style="text-align:right">${m.bal?fmtBRL(m.bal):'—'}</td>`).join('')}<td class="${tot.bal>0?'pos':tot.bal<0?'neg':''}" style="text-align:right">${tot.bal?fmtBRL(tot.bal):'—'}</td></tr>
-      <tr>
-        <td style="color:var(--yellow);font-size:11px;font-weight:600">💰 Quanto Vou Reservar<br><span style="color:var(--text3);font-weight:400;font-size:10px">Clique p/ editar</span></td>
-        ${monthly.map((m,i)=>`<td style="text-align:right;padding:4px 2px">
-          <input type="number" step="0.01" min="0"
-            value="${m.reserve||''}"
-            placeholder="0"
-            onchange="saveMonthReserve(${i},this)"
-            style="width:72px;text-align:right;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:3px 5px;color:var(--yellow);font-size:11px;font-family:'Syne',sans-serif;font-weight:600">
-        </td>`).join('')}
-        <td class="neg" style="text-align:right">${anyReserve?fmtBRL(-tot.reserve):'—'}</td>
-      </tr>
-      <tr class="subtotal"><td>Saldo Líquido</td>${monthly.map(m=>`<td class="${m.balAfterReserve>0?'pos':m.balAfterReserve<0?'neg':''}" style="text-align:right">${m.hasData?fmtBRL(m.balAfterReserve):'—'}</td>`).join('')}<td class="${tot.balAfterReserve>0?'pos':tot.balAfterReserve<0?'neg':''}" style="text-align:right">${fmtBRL(tot.balAfterReserve)}</td></tr>
-      <tr>
-        <td style="color:var(--accent);font-size:11px;font-weight:600">📈 Rendimento CDI<br><span style="color:var(--text3);font-weight:400;font-size:10px">Quanto a reserva rendeu</span></td>
-        ${monthly.map((m,i)=>{
-          const prevReserva=i===0?reservaInicial:reservaAcumulada[i-1];
-          const pct=prevReserva>0&&m.rendimento>0?(m.rendimento/prevReserva*100).toFixed(2):null;
-          return `<td style="text-align:right;padding:4px 2px">
-            <input type="number" step="0.01" min="0"
-              value="${m.rendimento||''}"
-              placeholder="0"
+  // ── Cards de resumo anual ──
+  const sumCards=[
+    {lbl:'Receitas',val:totAnual.inc,cls:'pos'},
+    {lbl:'Despesas',val:-totAnual.tot,cls:'neg'},
+    {lbl:'Saldo Bruto',val:totAnual.bal,cls:totAnual.bal>=0?'pos':'neg'},
+    {lbl:'Total Reservado',val:totAnual.reserve,cls:'',color:'var(--yellow)'},
+    {lbl:'Reserva Final',val:finalReserva,cls:'',color:'var(--accent5)'},
+  ];
+  $('cfAnnualSummary').innerHTML=sumCards.map(s=>`
+    <div class="cf-sum-card">
+      <div class="cf-sum-lbl">${s.lbl}</div>
+      <div class="cf-sum-val ${s.cls}" style="${s.color?`color:${s.color}`:''}">${fmtBRL(Math.abs(s.val))}</div>
+    </div>`).join('');
+
+  // ── Cards mensais ──
+  $('cfCardsGrid').innerHTML=monthly.map((m,i)=>{
+    const reservaAcc=reservaAcumulada[i];
+    const prevReserva=i===0?reservaInicial:reservaAcumulada[i-1];
+    const pctRend=prevReserva>0&&m.rendimento>0?(m.rendimento/prevReserva*100).toFixed(2):null;
+    const balColor=!m.hasData?'var(--text3)':m.bal>0?'var(--accent)':'var(--red)';
+    const liquidColor=!m.hasData?'var(--text3)':m.balAfterReserve>0?'var(--accent)':'var(--red)';
+    const cardCls=!m.hasData?'cf-empty':m.bal<0?'cf-negative':'cf-positive';
+    return `<div class="cf-month-card ${cardCls}">
+      <div class="cf-month-lbl">${MONTHS_S[i]}</div>
+      <div class="cf-month-row">
+        <span class="cf-month-row-lbl">Receita</span>
+        <span style="color:var(--accent);font-weight:600;font-size:12px">${m.inc?fmtBRL(m.inc):'—'}</span>
+      </div>
+      <div class="cf-month-row">
+        <span class="cf-month-row-lbl">Despesas</span>
+        <span style="color:var(--red);font-size:12px">${m.tot?fmtBRL(-m.tot):'—'}</span>
+      </div>
+      <div class="cf-month-bal">
+        <span style="font-size:10px;color:var(--text3)">Saldo</span>
+        <span style="color:${balColor}">${m.hasData?fmtBRL(m.bal):'—'}</span>
+      </div>
+      <div class="cf-reserva">
+        <div class="cf-reserva-lbl">💰 Quanto Reservar</div>
+        <input type="number" step="0.01" min="0" value="${m.reserve||''}" placeholder="0,00"
+          onchange="saveMonthReserve(${i},this)"
+          class="cf-month-input inp-yellow" style="color:var(--yellow);border-color:rgba(251,191,36,.3)">
+        <div style="margin-top:6px">
+          <div class="cf-reserva-lbl" style="color:var(--accent)">📈 Rendimento CDI</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" step="0.01" min="0" value="${m.rendimento||''}" placeholder="0,00"
               onchange="saveMonthRendimento(${i},this)"
-              style="width:72px;text-align:right;background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.25);border-radius:6px;padding:3px 5px;color:var(--accent);font-size:11px;font-family:'Syne',sans-serif;font-weight:600">
-            ${pct?`<div style="font-size:9px;color:var(--accent);opacity:.7;margin-top:1px">${pct}% a.m.</div>`:''}
-          </td>`;
-        }).join('')}
-        <td class="pos" style="text-align:right">${anyRendimento?fmtBRL(tot.rendimento):'—'}</td>
-      </tr>
-      <tr class="patrimonio"><td>💰 Reserva Acumulada<br><span style="font-size:10px;font-weight:400;color:var(--text3)">Início: ${fmtBRL(reservaInicial)}</span></td>${reservaAcumulada.map(v=>`<td class="purple" style="text-align:right">${fmtBRL(v)}</td>`).join('')}<td class="purple" style="text-align:right">${fmtBRL(finalReserva)}</td></tr>
-    </tbody>`;
+              class="cf-month-input" style="color:var(--accent);border-color:rgba(94,234,212,.25)">
+            ${pctRend?`<span style="font-size:9px;color:var(--accent);opacity:.7">${pctRend}%</span>`:''}
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:6px;border-top:1px solid rgba(167,139,250,.15)">
+          <span style="font-size:10px;color:var(--accent5)">Reserva Acum.</span>
+          <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--accent5)">${fmtBRL(reservaAcc)}</span>
+        </div>
+      </div>
+      ${m.hasData&&m.reserve>0?`<div style="margin-top:6px;font-size:10px;display:flex;justify-content:space-between">
+        <span style="color:var(--text3)">Líquido</span>
+        <span style="color:${liquidColor};font-weight:600">${fmtBRL(m.balAfterReserve)}</span>
+      </div>`:''}
+    </div>`;
+  }).join('');
+
+  // ── Placeholder inativo ── (cfTable removido, mantém compatibilidade)
+  const _unused=`dead`;
 
   if(flowChartI)flowChartI.destroy();
   flowChartI=new Chart($('flowChart').getContext('2d'),{
@@ -2341,36 +2413,11 @@ function renderCashflow(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a84a0',font:{family:'DM Sans',size:11},boxWidth:10}}},scales:{x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.03)'}}}}
   });
 
-  // Reserva Acumulada line chart
   if(patriChartI)patriChartI.destroy();
   patriChartI=new Chart($('patriChart').getContext('2d'),{
     type:'line',
-    data:{
-      labels:MONTHS_S,
-      datasets:[{
-        label:'Reserva Acumulada',
-        data:reservaAcumulada,
-        borderColor:'#a78bfa',
-        backgroundColor:'rgba(167,139,250,.12)',
-        borderWidth:2.5,
-        pointBackgroundColor:'#a78bfa',
-        pointRadius:4,
-        pointHoverRadius:6,
-        fill:true,
-        tension:0.35
-      }]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>` Reserva: ${fmtBRL(ctx.raw)}`}}
-      },
-      scales:{
-        x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},
-        y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.04)'}}
-      }
-    }
+    data:{labels:MONTHS_S,datasets:[{label:'Reserva Acumulada',data:reservaAcumulada,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.12)',borderWidth:2.5,pointBackgroundColor:'#a78bfa',pointRadius:4,pointHoverRadius:6,fill:true,tension:0.35}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Reserva: ${fmtBRL(ctx.raw)}`}}},scales:{x:{ticks:{color:'#444e68',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#444e68',font:{size:10},callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'rgba(255,255,255,.04)'}}}}
   });
 }
 
@@ -2662,35 +2709,53 @@ async function renderShared(status){
   tog.reservaAcc=togResAcc; tog.finalPat=togResAcc[11];
 
   // Build a single clean table for one person
-  function buildTable(label,d,reservaAcc,accentColor,hasReserve){
-    const v=(val,neg)=>`<td class="${val>0&&!neg?'pos':val<0||neg&&val!==0?'neg':''}" style="text-align:right">${val?fmtBRL(neg?-val:val):'—'}</td>`;
-    const tot=(val,neg)=>`<td style="text-align:right;font-weight:700;color:${neg||val<0?'var(--red)':val>0?'var(--accent)':'var(--text3)'}">${val?fmtBRL(Math.abs(val)):'—'}</td>`;
-    const hasRend=d.totRend>0;
-    return `
-    <div class="sec-card" style="margin-bottom:14px">
-      <div class="sec-hdr" style="background:${accentColor}18;border-bottom-color:${accentColor}30">
+  function buildPersonCards(label, d, reservaAcc, accentColor, hasReserve){
+    const hasRend = d.totRend > 0;
+    const sumItems = [
+      {lbl:'Receitas', val:d.totInc, color:'var(--accent)'},
+      {lbl:'Despesas', val:-d.totExp, color:'var(--red)'},
+      {lbl:'Saldo', val:d.totBal, color:d.totBal>=0?'var(--accent)':'var(--red)'},
+      ...(hasReserve?[{lbl:'Reservado', val:-d.totRes, color:'var(--yellow)'}]:[]),
+      ...(hasRend?[{lbl:'Rendimentos', val:d.totRend, color:'var(--accent)'}]:[]),
+      {lbl:'Reserva Final', val:d.finalPat, color:accentColor},
+    ];
+    const cards = MONTHS_S.map((ms,i)=>{
+      const m = d.monthly[i];
+      if(!m) return '';
+      const hasData = m.inc>0||m.exp>0;
+      const balColor = !hasData?'var(--text3)':m.bal>=0?'var(--accent)':'var(--red)';
+      const cardCls = !hasData?'cf-empty':m.bal<0?'cf-negative':'cf-positive';
+      return `<div class="cf-month-card ${cardCls}">
+        <div class="cf-month-lbl">${ms}</div>
+        <div class="cf-month-row"><span class="cf-month-row-lbl">Receita</span><span style="color:var(--accent);font-weight:600;font-size:12px">${m.inc?fmtBRL(m.inc):'—'}</span></div>
+        <div class="cf-month-row"><span class="cf-month-row-lbl">Despesas</span><span style="color:var(--red);font-size:12px">${m.exp?fmtBRL(-m.exp):'—'}</span></div>
+        <div class="cf-month-bal"><span style="font-size:10px;color:var(--text3)">Saldo</span><span style="color:${balColor}">${hasData?fmtBRL(m.bal):'—'}</span></div>
+        ${hasReserve||hasRend?`<div class="cf-reserva">
+          ${hasReserve?`<div style="display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px"><span style="color:var(--yellow)">💰 Reserva</span><span style="color:var(--yellow);font-weight:600">${m.reserve?fmtBRL(-m.reserve):'—'}</span></div>`:''}
+          ${hasRend?`<div style="display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px"><span style="color:var(--accent)">📈 CDI</span><span style="color:var(--accent);font-weight:600">${m.rendimento?fmtBRL(m.rendimento):'—'}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;padding-top:5px;border-top:1px solid rgba(167,139,250,.15)">
+            <span style="font-size:10px;color:var(--accent5)">Reserva Acum.</span>
+            <span style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent5)">${fmtBRL(reservaAcc[i])}</span>
+          </div>
+        </div>`:''}
+      </div>`;
+    }).join('');
+
+    return `<div class="sec-card" style="margin-bottom:18px">
+      <div class="sec-hdr" style="background:${accentColor}18;border-bottom-color:${accentColor}30;flex-wrap:wrap;gap:8px">
         <div class="sec-title" style="color:${accentColor}">👤 ${label}</div>
-        <div style="font-size:11px;color:var(--text3)">Receitas: <b style="color:var(--accent)">${fmtBRL(d.totInc)}</b> · Despesas: <b style="color:var(--red)">${fmtBRL(d.totExp)}</b> · Reserva: <b style="color:${accentColor}">${fmtBRL(d.finalPat)}</b></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          ${sumItems.map(s=>`<span style="font-size:11px;color:var(--text3)">${s.lbl}: <b style="color:${s.color}">${fmtBRL(Math.abs(s.val))}</b></span>`).join('')}
+        </div>
       </div>
-      <div class="cf-wrap"><table class="cf-table">
-        <thead><tr><th>Linha</th>${MONTHS_S.map(m=>`<th>${m}</th>`).join('')}<th>Total</th></tr></thead>
-        <tbody>
-          <tr><td>Receitas</td>${d.monthly.map(m=>v(m.inc,false)).join('')}${tot(d.totInc,false)}</tr>
-          <tr><td style="padding-left:18px;color:var(--text3)">↳ Fixas</td>${d.monthly.map(m=>v(m.fi,true)).join('')}${tot(d.totFi,true)}</tr>
-          <tr><td style="padding-left:18px;color:var(--text3)">↳ Variáveis</td>${d.monthly.map(m=>v(m.va,true)).join('')}${tot(d.totVa,true)}</tr>
-          <tr class="subtotal"><td>O que Sobra</td>${d.monthly.map(m=>v(m.bal,false)).join('')}${tot(d.totBal,false)}</tr>
-          ${hasReserve?`<tr><td style="color:var(--yellow)">(-) Quanto Reservou</td>${d.monthly.map(m=>`<td class="neg" style="text-align:right">${m.reserve?fmtBRL(-m.reserve):'—'}</td>`).join('')}<td style="text-align:right;color:var(--red)">${fmtBRL(-d.totRes)}</td></tr>`:''}
-          ${hasRend?`<tr><td style="color:var(--accent)">📈 Rendimento CDI</td>${d.monthly.map(m=>`<td class="pos" style="text-align:right">${m.rendimento?fmtBRL(m.rendimento):'—'}</td>`).join('')}<td style="text-align:right;color:var(--accent)">${fmtBRL(d.totRend)}</td></tr>`:''}
-          <tr class="patrimonio"><td>💰 Reserva Acumulada</td>${reservaAcc.map(v2=>`<td class="purple" style="text-align:right;font-size:10px">${fmtBRL(v2)}</td>`).join('')}<td class="purple" style="text-align:right">${fmtBRL(d.finalPat)}</td></tr>
-        </tbody>
-      </table></div>
+      <div style="padding:14px 16px"><div class="cf-grid">${cards}</div></div>
     </div>`;
   }
 
   $('sharedTables').innerHTML=
-    buildTable(myName, me, me.reservaAcc, 'var(--accent)', me.totRes>0)+
-    buildTable(partnerName, pt, pt.reservaAcc, 'var(--accent2)', pt.totRes>0)+
-    buildTable('Consolidado — Juntos', tog, togResAcc, 'var(--accent5)', me.totRes>0||pt.totRes>0);
+    buildPersonCards(myName, me, me.reservaAcc, 'var(--accent)', me.totRes>0)+
+    buildPersonCards(partnerName, pt, pt.reservaAcc, 'var(--accent2)', pt.totRes>0)+
+    buildPersonCards('Consolidado — Juntos', tog, togResAcc, 'var(--accent5)', me.totRes>0||pt.totRes>0);
 
   $('sharedSub').textContent=`${myName} & ${partnerName} — ${year}`;
 }
@@ -3375,128 +3440,76 @@ function buildInsightsPayload(){
   const name = curUser?.displayName || curUser?.email?.split('@')[0] || 'você';
   const txs  = getMonthTx();
   const allTxs = userData.transactions;
-
   const fmtM = (y,m) => `${MONTHS[m]} ${y}`;
 
-  // Mês atual
   const inc  = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
   const exp  = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
   const fixed = txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
-  const variable = txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
 
-  // Categorias do mês atual com itens
+  // Categorias com até 4 itens cada
   const catMap = {};
   txs.filter(t=>t.type==='expense').forEach(t=>{
     if(!catMap[t.category]) catMap[t.category]={total:0,items:[]};
     catMap[t.category].total += t.value;
-    catMap[t.category].items.push({desc:t.desc, value:t.value, isSub:!!t._isSub});
+    if(catMap[t.category].items.length<4) catMap[t.category].items.push(`${t.desc}: R$${t.value.toFixed(2)}${t._isSub?' (assinatura)':''}`);
   });
-  const catsSorted = Object.entries(catMap)
-    .sort((a,b)=>b[1].total-a[1].total)
-    .map(([cat,d])=>({
-      category: cat,
-      total: +d.total.toFixed(2),
-      pct: exp>0 ? +(d.total/exp*100).toFixed(1) : 0,
-      topItems: d.items
-        .sort((a,b)=>b.value-a.value)
-        .slice(0,4)
-        .map(i=>`${i.desc}: R$${i.value.toFixed(2)}${i.isSub?' (assinatura)':''}`)
-    }));
+  const cats = Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total)
+    .map(([c,d])=>({category:c, total:+d.total.toFixed(2), pct:exp>0?+(d.total/exp*100).toFixed(1):0, topItems:d.items}));
 
-  // Receitas do mês com fontes
-  const incSources = txs.filter(t=>t.type==='income')
-    .map(t=>({desc:t.desc, value:t.value}))
-    .sort((a,b)=>b.value-a.value);
+  // Receitas do mês
+  const incSources = txs.filter(t=>t.type==='income').map(t=>({desc:t.desc,value:t.value})).sort((a,b)=>b.value-a.value);
 
-  // Histórico últimos 5 meses (categorias + totais)
+  // Histórico 5 meses com breakdown completo por categoria
   const history = [];
   for(let i=1;i<=5;i++){
-    let m=curMonth-i, y=curYear;
-    if(m<0){m+=12;y--;}
-    const mTxs = [...allTxs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===y; }), ...getSubscriptionTxs(y,m)];
-    const mInc  = mTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
-    const mExp  = mTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
-    const mFixed= mTxs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
-    const mVar  = mTxs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
-    if(mInc===0&&mExp===0) continue;
-    const mCats={};
-    mTxs.filter(t=>t.type==='expense').forEach(t=>{mCats[t.category]=(mCats[t.category]||0)+t.value;});
+    let m=curMonth-i, y=curYear; if(m<0){m+=12;y--;}
+    const mt=[...allTxs.filter(t=>{const c=getTxComp(t);return c.month===m&&c.year===y;}),...getSubscriptionTxs(y,m)];
+    const mI=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+    const mE=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+    const mF=mt.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
+    const mV=mt.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
+    if(!mI&&!mE) continue;
+    const mc={};
+    mt.filter(t=>t.type==='expense').forEach(t=>{mc[t.category]=(mc[t.category]||0)+t.value;});
     history.push({
-      month: fmtM(y,m),
-      income: +mInc.toFixed(2),
-      expenses: +mExp.toFixed(2),
-      fixed: +mFixed.toFixed(2),
-      variable: +mVar.toFixed(2),
-      balance: +(mInc-mExp).toFixed(2),
-      savingsRate: mInc>0 ? +((mInc-mExp)/mInc*100).toFixed(1) : 0,
-      byCategory: Object.fromEntries(Object.entries(mCats).map(([k,v])=>[k,+v.toFixed(2)]))
+      month:fmtM(y,m), income:+mI.toFixed(2), expenses:+mE.toFixed(2),
+      fixed:+mF.toFixed(2), variable:+mV.toFixed(2),
+      balance:+(mI-mE).toFixed(2), savingsRate:mI>0?+((mI-mE)/mI*100).toFixed(1):0,
+      byCategory:Object.fromEntries(Object.entries(mc).map(([k,v])=>[k,+v.toFixed(2)]))
     });
   }
 
   // Assinaturas ativas
-  const activeSubs = (userData.subscriptions||[]).filter(s=>s.active)
-    .map(s=>({desc:s.desc, value:s.value, category:s.category, payment:s.payment}));
+  const activeSubs=(userData.subscriptions||[]).filter(s=>s.active).map(s=>({desc:s.desc,value:s.value,category:s.category}));
 
   return {
-    user: name,
-    currentMonth: fmtM(curYear,curMonth),
-    income: { total:+inc.toFixed(2), sources:incSources },
-    expenses: {
-      total:+exp.toFixed(2), fixed:+fixed.toFixed(2), variable:+variable.toFixed(2),
-      byCategory: catsSorted
-    },
-    balance: +(inc-exp).toFixed(2),
-    savingsRate: inc>0 ? +((inc-exp)/inc*100).toFixed(1) : 0,
-    history,
-    activeSubscriptions: activeSubs,
-    hasData: inc>0||exp>0
+    user:name, currentMonth:fmtM(curYear,curMonth),
+    income:{total:+inc.toFixed(2), sources:incSources},
+    expenses:{total:+exp.toFixed(2), fixed:+fixed.toFixed(2), variable:+(exp-fixed).toFixed(2), byCategory:cats},
+    balance:+(inc-exp).toFixed(2), savingsRate:inc>0?+((inc-exp)/inc*100).toFixed(1):0,
+    history, activeSubscriptions:activeSubs, hasData:inc>0||exp>0
   };
 }
 
-// ── Streaming da resposta do Claude ──
-async function streamInsights(payload, contentEl){
-  const systemPrompt = `Você é um analista financeiro pessoal especializado em finanças brasileiras. Seu trabalho é gerar uma análise financeira profunda, específica e útil com base nos dados reais do usuário.
-
-REGRAS OBRIGATÓRIAS:
-1. Seja ESPECÍFICO: mencione categorias, valores e itens reais dos dados. Nunca seja genérico.
-2. EXPLIQUE O PORQUÊ: se um mês foi diferente, aponte qual categoria mudou, e dentro dessa categoria, quais itens contribuíram.
-3. USE O HISTÓRICO: compare detalhadamente com os meses anteriores. Ex: "Em ${payload.currentMonth} você gastou R$X em Restaurante, vs R$Y no mês passado — isso representa a maior variação do mês."
-4. CURIOSIDADE COM WEB SEARCH: busque UMA notícia ou dado atual relevante para a situação financeira do usuário (ex: inflação, IPCA, CDI, tendência de gastos de brasileiros no setor mais relevante para o usuário, etc.). Não force — escolha algo que faça sentido para os dados deste mês específico.
-5. CADA MÊS É ÚNICO: a análise deve ser diferente todo mês, refletindo o que realmente aconteceu.
-6. Tom: pessoal, direto, sem jargão excessivo. Fale como um amigo entendido em finanças.
-7. Formato HTML simples: use <p>, <b>, <span style="color:#cor"> para destaques. Sem markdown. Sem headers grandes. Máximo 6 parágrafos.
-8. Não repita o nome do usuário mais de uma vez.
-9. Se não houver dados suficientes, diga isso claramente em 1 parágrafo curto.`;
-
-  const userMsg = `Analise os dados financeiros de ${payload.user} para ${payload.currentMonth}:
-
-${JSON.stringify(payload, null, 2)}
-
-Gere uma análise financeira personalizada, profunda e específica. Inclua:
-- O que realmente diferenciou este mês dos anteriores (por categoria e itens)
-- A maior mudança positiva ou negativa e por quê aconteceu
-- Uma curiosidade ou contexto atual buscado na web que seja genuinamente relevante para este perfil este mês
-- Uma recomendação concreta e acionável baseada nos padrões reais`;
-
+// ── Chamada à API do Claude (Sonnet — análise rica) ──
+async function callInsightsAPI(systemPrompt, userMsg){
   const apiKey = getApiKey();
-  if(!apiKey){
-    throw new Error('API Key não configurada. Vá em ⚙️ Configurações e insira sua chave Anthropic.');
-  }
+  if(!apiKey) throw new Error('API Key não configurada. Vá em ⚙️ Configurações.');
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type':'application/json',
       'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1200,
       system: systemPrompt,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      messages: [{ role: 'user', content: userMsg }]
+      tools: [{ type:'web_search_20250305', name:'web_search' }],
+      messages: [{ role:'user', content: userMsg }]
     })
   });
 
@@ -3506,31 +3519,25 @@ Gere uma análise financeira personalizada, profunda e específica. Inclua:
   }
 
   const data = await response.json();
-
-  // Extrai texto da resposta (pode ter blocos tool_use + text)
-  let html = '';
-  for(const block of data.content){
-    if(block.type === 'text') html += block.text;
-  }
-
-  // Limpa e formata
-  html = html.trim();
-  // Se o Claude retornou markdown, converte básico para HTML
+  let html = data.content.filter(b=>b.type==='text').map(b=>b.text).join('').trim();
   html = html
-    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
-    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'<em>$1</em>')
     .replace(/^#{1,3}\s+(.+)$/gm,'<b>$1</b>')
-    .replace(/\n\n+/g,'</p><p style="margin-top:10px">')
-    .replace(/\n/g,' ');
-  if(!html.startsWith('<')) html = `<p>${html}</p>`;
+    .replace(/\n\n+/g,'</p><p style="margin-top:10px">').replace(/\n/g,' ');
+  if(!html.startsWith('<')) html=`<p>${html}</p>`;
+  return html;
+}
 
+async function streamInsights(payload, contentEl){
+  const sys = `Você é um analista financeiro pessoal especializado em finanças brasileiras. Responda em HTML simples (<p><b>). Máx 6 parágrafos. Seja ESPECÍFICO: mencione categorias, valores e itens reais. EXPLIQUE O PORQUÊ das variações vs meses anteriores. Faça UMA busca web por dado atual relevante (IPCA, CDI ou tendência do setor mais relevante para este perfil). Tom direto, pessoal, sem jargão.`;
+  const msg = `Analise os dados financeiros de ${payload.user} para ${payload.currentMonth}:\n${JSON.stringify(payload)}\n\nDestaques: o que diferenciou este mês dos anteriores (por categoria e itens), maior variação e por quê, dado atual do web search relevante, 1 recomendação concreta.`;
+  const html = await callInsightsAPI(sys, msg);
   contentEl.innerHTML = `
     <div style="font-size:13px;line-height:1.8;color:var(--text2)">
       ${html}
       <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(94,234,212,.15);font-size:10px;color:var(--text3);display:flex;align-items:center;gap:6px">
         <span style="background:linear-gradient(135deg,var(--accent),var(--accent4));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700">✦ IA</span>
-        Análise gerada pelo Claude · ${MONTHS[curMonth]} ${curYear}
-        ${data.usage ? `· ${data.usage.input_tokens+data.usage.output_tokens} tokens` : ''}
+        Claude Sonnet · ${payload.currentMonth}
       </div>
     </div>`;
 }
@@ -3602,6 +3609,95 @@ function maybeAutoInsights(){
     content.innerHTML=insightsCache;
   }
 }
+
+// ── Helpers de loading compartilhado ──
+function showInsightsLoading(btnId, contentId, color){
+  const btn=$(btnId), content=$(contentId);
+  if(!content) return;
+  btn.disabled=true; btn.textContent='⏳';
+  content.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:4px 0">
+    <div class="spinner" style="width:20px;height:20px;border-width:2px;flex-shrink:0"></div>
+    <span style="font-size:12px;color:var(--text3)">Analisando com IA…</span>
+  </div>`;
+}
+function showInsightsError(btnId, contentId, btnLabel, e){
+  const btn=$(btnId), content=$(contentId);
+  const isKey=e.message.includes('API Key')||e.message.includes('401')||e.message.includes('403');
+  if(content) content.innerHTML=`<div style="font-size:12px;color:var(--text3);line-height:1.7">${isKey?`🔑 <b style="color:var(--text2)">Configure sua API Key</b> em <button onclick="gotoPage('settings')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:0;text-decoration:underline">⚙️ Configurações</button>.`:`⚠️ ${e.message}`}</div>`;
+  if(btn){btn.disabled=false;btn.textContent=btnLabel;}
+}
+
+// ── Insights do Fluxo de Caixa (anual) ──
+let cfInsightsCache={}, cfInsightsCacheYear={};
+window.refreshCashflowInsights = async function(){
+  const year = parseInt($('cfYear').value)||curYear;
+  const btn=$('cfInsightsBtn'), content=$('cfInsightsContent');
+  showInsightsLoading('cfInsightsBtn','cfInsightsContent');
+
+  try{
+    // Monta payload anual compacto
+    const allTxs = userData.transactions;
+    const months = MONTHS_S.map((_,m)=>{
+      const txs=[...allTxs.filter(t=>{const c=getTxComp(t);return c.month===m&&c.year===year;}),...getSubscriptionTxs(year,m)];
+      const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+      const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+      const mc={};
+      txs.filter(t=>t.type==='expense').forEach(t=>{mc[t.category]=(mc[t.category]||0)+t.value;});
+      const top3=Object.entries(mc).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      return {m:MONTHS_S[m],i:+inc.toFixed(0),e:+exp.toFixed(0),b:+(inc-exp).toFixed(0),cats:Object.fromEntries(top3.map(([k,v])=>[k,+v.toFixed(0)]))};
+    }).filter(m=>m.i>0||m.e>0);
+
+    if(!months.length){ content.innerHTML=`<span style="font-size:12px;color:var(--text3)">Sem dados em ${year}.</span>`; btn.disabled=false;btn.textContent='↻ Analisar'; return; }
+
+    const totInc=months.reduce((s,m)=>s+m.i,0);
+    const totExp=months.reduce((s,m)=>s+m.e,0);
+    const payload={user:curUser?.displayName||'você', year, months, totInc:+totInc.toFixed(0), totExp:+totExp.toFixed(0), totBal:+(totInc-totExp).toFixed(0), savRate:totInc>0?+((totInc-totExp)/totInc*100).toFixed(0):0};
+
+    const sys=`Analista financeiro pessoal brasileiro. Responda em HTML (<p><b>). Máx 4 parágrafos. Analise o ANO completo: melhores/piores meses, tendências por categoria ao longo do ano, padrões sazonais, 1 dado web relevante (IPCA anual, CDI, etc.), 1 recomendação concreta para o próximo ano.`;
+    const msg=`Analise o fluxo de caixa anual de ${payload.user} em ${year}:\n${JSON.stringify(payload)}`;
+
+    const html = await callInsightsAPI(sys, msg);
+    content.innerHTML=`<div style="font-size:13px;line-height:1.8;color:var(--text2)">${html}<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(167,139,250,.15);font-size:10px;color:var(--text3)">✦ IA · Claude Haiku · ${year}</div></div>`;
+    cfInsightsCache[year]=content.innerHTML;
+
+  }catch(e){ console.error(e); showInsightsError('cfInsightsBtn','cfInsightsContent','↻ Analisar',e); return; }
+  btn.disabled=false; btn.textContent='↻ Analisar';
+};
+
+// ── Insights do Fluxo Compartilhado ──
+let sharedInsightsCache={};
+window.refreshSharedInsights = async function(){
+  const year = parseInt($('sharedYear').value)||curYear;
+  const btn=$('sharedInsightsBtn'), content=$('sharedInsightsContent');
+  showInsightsLoading('sharedInsightsBtn','sharedInsightsContent');
+
+  try{
+    // Lê os dados já renderizados das tabelas compartilhadas (me + partner)
+    const myName=curUser?.displayName||curUser?.email?.split('@')[0]||'Você';
+    // Monta payload a partir das transações já carregadas (reutiliza o que já está em memória)
+    const allTxs=userData.transactions;
+    const myMonths=MONTHS_S.map((_,m)=>{
+      const txs=[...allTxs.filter(t=>{const c=getTxComp(t);return c.month===m&&c.year===year;}),...getSubscriptionTxs(year,m)];
+      const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+      const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+      return {m:MONTHS_S[m],i:+inc.toFixed(0),e:+exp.toFixed(0),b:+(inc-exp).toFixed(0)};
+    }).filter(m=>m.i>0||m.e>0);
+
+    if(!myMonths.length){ content.innerHTML=`<span style="font-size:12px;color:var(--text3)">Sem dados suficientes.</span>`; btn.disabled=false;btn.textContent='↻ Analisar'; return; }
+
+    const myTot={i:myMonths.reduce((s,m)=>s+m.i,0),e:myMonths.reduce((s,m)=>s+m.e,0)};
+    const payload={year, person1:{name:myName,months:myMonths,totInc:+myTot.i.toFixed(0),totExp:+myTot.e.toFixed(0),bal:+(myTot.i-myTot.e).toFixed(0)}};
+
+    const sys=`Analista financeiro pessoal brasileiro. Responda em HTML (<p><b>). Máx 4 parágrafos. Analise o fluxo compartilhado do ano: quem contribuiu mais, distribuição de despesas, tendências conjuntas, 1 recomendação financeira para o casal.`;
+    const msg=`Analise o fluxo compartilhado de ${year}:\n${JSON.stringify(payload)}`;
+
+    const html = await callInsightsAPI(sys, msg);
+    content.innerHTML=`<div style="font-size:13px;line-height:1.8;color:var(--text2)">${html}<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(244,114,182,.15);font-size:10px;color:var(--text3)">✦ IA · Claude Haiku · ${year}</div></div>`;
+    sharedInsightsCache[year]=content.innerHTML;
+
+  }catch(e){ console.error(e); showInsightsError('sharedInsightsBtn','sharedInsightsContent','↻ Analisar',e); return; }
+  btn.disabled=false; btn.textContent='↻ Analisar';
+};
 
 // KEYBOARD
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeTxModal(); closeBudgetModal(); } });
