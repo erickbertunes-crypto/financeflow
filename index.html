@@ -647,6 +647,30 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="page-hdr">
         <div><div class="page-title">Configurações</div><div class="page-sub">Personalize seu app</div></div>
       </div>
+
+      <!-- API KEY -->
+      <div class="sec-card" style="margin-bottom:18px">
+        <div class="sec-hdr">
+          <div>
+            <div class="sec-title">🤖 Análise por IA — Anthropic API Key</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">Necessário para a Análise Financeira Personalizada do Dashboard</div>
+          </div>
+        </div>
+        <div style="padding:16px 18px">
+          <div style="background:rgba(94,234,212,.05);border:1px solid rgba(94,234,212,.15);border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:12px;color:var(--text3);line-height:1.7">
+            A análise usa a API da Anthropic (Claude) com busca na web. Você precisa de uma chave em
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--accent);text-decoration:none">console.anthropic.com/keys</a>.
+            A chave é salva <b style="color:var(--text2)">apenas no seu navegador</b> (localStorage) e nunca enviada ao servidor.
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input class="form-input" type="password" id="settingsApiKey" placeholder="sk-ant-api03-..." style="flex:1;min-width:240px;font-family:monospace;font-size:12px">
+            <button class="btn btn-primary" onclick="saveApiKey()" style="white-space:nowrap">💾 Salvar Chave</button>
+            <button class="btn btn-ghost" onclick="clearApiKey()" style="white-space:nowrap">🗑️ Remover</button>
+          </div>
+          <div id="apiKeyStatus" style="margin-top:10px;font-size:11.5px;height:16px"></div>
+        </div>
+      </div>
+
       <!-- CATEGORIES -->
       <div class="sec-card" style="margin-bottom:18px">
         <div class="sec-hdr">
@@ -3346,144 +3370,230 @@ window.downloadModelo=function(){
 let insightsCache = null;
 let insightsCacheMonth = null;
 
-window.refreshInsights = function(){
-  const btn=$('insightsRefreshBtn');
-  const content=$('insightsContent');
+// ── Monta payload rico de dados financeiros para o Claude analisar ──
+function buildInsightsPayload(){
+  const name = curUser?.displayName || curUser?.email?.split('@')[0] || 'você';
+  const txs  = getMonthTx();
+  const allTxs = userData.transactions;
+
+  const fmtM = (y,m) => `${MONTHS[m]} ${y}`;
+
+  // Mês atual
+  const inc  = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+  const exp  = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+  const fixed = txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
+  const variable = txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
+
+  // Categorias do mês atual com itens
+  const catMap = {};
+  txs.filter(t=>t.type==='expense').forEach(t=>{
+    if(!catMap[t.category]) catMap[t.category]={total:0,items:[]};
+    catMap[t.category].total += t.value;
+    catMap[t.category].items.push({desc:t.desc, value:t.value, isSub:!!t._isSub});
+  });
+  const catsSorted = Object.entries(catMap)
+    .sort((a,b)=>b[1].total-a[1].total)
+    .map(([cat,d])=>({
+      category: cat,
+      total: +d.total.toFixed(2),
+      pct: exp>0 ? +(d.total/exp*100).toFixed(1) : 0,
+      topItems: d.items
+        .sort((a,b)=>b.value-a.value)
+        .slice(0,4)
+        .map(i=>`${i.desc}: R$${i.value.toFixed(2)}${i.isSub?' (assinatura)':''}`)
+    }));
+
+  // Receitas do mês com fontes
+  const incSources = txs.filter(t=>t.type==='income')
+    .map(t=>({desc:t.desc, value:t.value}))
+    .sort((a,b)=>b.value-a.value);
+
+  // Histórico últimos 5 meses (categorias + totais)
+  const history = [];
+  for(let i=1;i<=5;i++){
+    let m=curMonth-i, y=curYear;
+    if(m<0){m+=12;y--;}
+    const mTxs = [...allTxs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===y; }), ...getSubscriptionTxs(y,m)];
+    const mInc  = mTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+    const mExp  = mTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
+    const mFixed= mTxs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
+    const mVar  = mTxs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
+    if(mInc===0&&mExp===0) continue;
+    const mCats={};
+    mTxs.filter(t=>t.type==='expense').forEach(t=>{mCats[t.category]=(mCats[t.category]||0)+t.value;});
+    history.push({
+      month: fmtM(y,m),
+      income: +mInc.toFixed(2),
+      expenses: +mExp.toFixed(2),
+      fixed: +mFixed.toFixed(2),
+      variable: +mVar.toFixed(2),
+      balance: +(mInc-mExp).toFixed(2),
+      savingsRate: mInc>0 ? +((mInc-mExp)/mInc*100).toFixed(1) : 0,
+      byCategory: Object.fromEntries(Object.entries(mCats).map(([k,v])=>[k,+v.toFixed(2)]))
+    });
+  }
+
+  // Assinaturas ativas
+  const activeSubs = (userData.subscriptions||[]).filter(s=>s.active)
+    .map(s=>({desc:s.desc, value:s.value, category:s.category, payment:s.payment}));
+
+  return {
+    user: name,
+    currentMonth: fmtM(curYear,curMonth),
+    income: { total:+inc.toFixed(2), sources:incSources },
+    expenses: {
+      total:+exp.toFixed(2), fixed:+fixed.toFixed(2), variable:+variable.toFixed(2),
+      byCategory: catsSorted
+    },
+    balance: +(inc-exp).toFixed(2),
+    savingsRate: inc>0 ? +((inc-exp)/inc*100).toFixed(1) : 0,
+    history,
+    activeSubscriptions: activeSubs,
+    hasData: inc>0||exp>0
+  };
+}
+
+// ── Streaming da resposta do Claude ──
+async function streamInsights(payload, contentEl){
+  const systemPrompt = `Você é um analista financeiro pessoal especializado em finanças brasileiras. Seu trabalho é gerar uma análise financeira profunda, específica e útil com base nos dados reais do usuário.
+
+REGRAS OBRIGATÓRIAS:
+1. Seja ESPECÍFICO: mencione categorias, valores e itens reais dos dados. Nunca seja genérico.
+2. EXPLIQUE O PORQUÊ: se um mês foi diferente, aponte qual categoria mudou, e dentro dessa categoria, quais itens contribuíram.
+3. USE O HISTÓRICO: compare detalhadamente com os meses anteriores. Ex: "Em ${payload.currentMonth} você gastou R$X em Restaurante, vs R$Y no mês passado — isso representa a maior variação do mês."
+4. CURIOSIDADE COM WEB SEARCH: busque UMA notícia ou dado atual relevante para a situação financeira do usuário (ex: inflação, IPCA, CDI, tendência de gastos de brasileiros no setor mais relevante para o usuário, etc.). Não force — escolha algo que faça sentido para os dados deste mês específico.
+5. CADA MÊS É ÚNICO: a análise deve ser diferente todo mês, refletindo o que realmente aconteceu.
+6. Tom: pessoal, direto, sem jargão excessivo. Fale como um amigo entendido em finanças.
+7. Formato HTML simples: use <p>, <b>, <span style="color:#cor"> para destaques. Sem markdown. Sem headers grandes. Máximo 6 parágrafos.
+8. Não repita o nome do usuário mais de uma vez.
+9. Se não houver dados suficientes, diga isso claramente em 1 parágrafo curto.`;
+
+  const userMsg = `Analise os dados financeiros de ${payload.user} para ${payload.currentMonth}:
+
+${JSON.stringify(payload, null, 2)}
+
+Gere uma análise financeira personalizada, profunda e específica. Inclua:
+- O que realmente diferenciou este mês dos anteriores (por categoria e itens)
+- A maior mudança positiva ou negativa e por quê aconteceu
+- Uma curiosidade ou contexto atual buscado na web que seja genuinamente relevante para este perfil este mês
+- Uma recomendação concreta e acionável baseada nos padrões reais`;
+
+  const apiKey = getApiKey();
+  if(!apiKey){
+    throw new Error('API Key não configurada. Vá em ⚙️ Configurações e insira sua chave Anthropic.');
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1200,
+      system: systemPrompt,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: userMsg }]
+    })
+  });
+
+  if(!response.ok){
+    const err = await response.json().catch(()=>({}));
+    throw new Error(err.error?.message || `HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  // Extrai texto da resposta (pode ter blocos tool_use + text)
+  let html = '';
+  for(const block of data.content){
+    if(block.type === 'text') html += block.text;
+  }
+
+  // Limpa e formata
+  html = html.trim();
+  // Se o Claude retornou markdown, converte básico para HTML
+  html = html
+    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/^#{1,3}\s+(.+)$/gm,'<b>$1</b>')
+    .replace(/\n\n+/g,'</p><p style="margin-top:10px">')
+    .replace(/\n/g,' ');
+  if(!html.startsWith('<')) html = `<p>${html}</p>`;
+
+  contentEl.innerHTML = `
+    <div style="font-size:13px;line-height:1.8;color:var(--text2)">
+      ${html}
+      <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(94,234,212,.15);font-size:10px;color:var(--text3);display:flex;align-items:center;gap:6px">
+        <span style="background:linear-gradient(135deg,var(--accent),var(--accent4));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700">✦ IA</span>
+        Análise gerada pelo Claude · ${MONTHS[curMonth]} ${curYear}
+        ${data.usage ? `· ${data.usage.input_tokens+data.usage.output_tokens} tokens` : ''}
+      </div>
+    </div>`;
+}
+
+window.refreshInsights = async function(){
+  const btn     = $('insightsRefreshBtn');
+  const content = $('insightsContent');
   if(!content) return;
 
-  const cacheKey=`${curYear}-${curMonth}`;
-  btn.textContent='⏳ Analisando...';
-  btn.disabled=true;
+  const cacheKey = `${curYear}-${curMonth}`;
+  btn.disabled = true;
 
-  // Small delay for UX feel
-  setTimeout(()=>{
-    try{
-      const html = gerarInsights();
-      insightsCache=html;
-      insightsCacheMonth=cacheKey;
-      content.innerHTML=html;
-    }catch(e){
-      content.innerHTML=`<div style="color:var(--text3);font-size:13px;text-align:center">⚠️ Sem dados suficientes para análise este mês.</div>`;
-      console.error(e);
-    }
-    btn.textContent='↻ Atualizar';
-    btn.disabled=false;
-  }, 600);
-};
-
-function gerarInsights(){
-  const name=curUser?.displayName||curUser?.email?.split('@')[0]||'você';
-  const txs=getMonthTx();
-  const allTxs=userData.transactions;
-
-  const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
-  const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
-  const fixed=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
-  const variable=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
-  const bal=inc-exp;
-  const avgExpAnual=calcAnnualAvg(t=>t.type==='expense');
-  const avgIncAnual=calcAnnualAvg(t=>t.type==='income');
-
-  // Top categorias
-  const catMap={};
-  txs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.value;});
-  const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
-  const topCat=topCats[0];
-
-  // Histórico últimos 3 meses
-  const hist=[];
-  for(let i=1;i<=3;i++){
-    let m=curMonth-i,y=curYear; if(m<0){m+=12;y--;}
-    const v=allTxs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===y&&t.type==='expense'; }).reduce((s,t)=>s+t.value,0);
-    if(v>0) hist.push(v);
-  }
-  const avgHist=hist.length?hist.reduce((s,v)=>s+v,0)/hist.length:0;
-
-  // Comprometimento fixo
-  const pctFixed=inc>0?(fixed/inc*100):0;
-  const pctExp=inc>0?(exp/inc*100):0;
-  const poupanca=inc>0?(bal/inc*100):0;
-
-  // Benchmarks BR
-  const salMedioBR=3200;
-  const gastoAlimSP=1000; // média SP
-  const alimentacao=(catMap['Restaurante']||0)+(catMap['Supermercado']||0)+(catMap['99food']||0);
-
-  const paras=[];
-
-  // ── Saudação + visão geral ──
-  if(exp===0 && inc===0){
-    paras.push(`👋 Olá, <b>${name}</b>! Ainda não há lançamentos em ${MONTHS[curMonth]}. Assim que você registrar suas movimentações, vou gerar uma análise completa do seu mês.`);
-    return montarHTML(paras);
-  }
-
-  paras.push(`👋 Olá, <b>${name}</b>! Aqui está seu resumo de <b>${MONTHS[curMonth]} ${curYear}</b>.`);
-
-  // ── Saldo ──
-  if(inc>0){
-    if(bal>0){
-      const emoji=poupanca>=20?'🟢':poupanca>=10?'🟡':'🟠';
-      paras.push(`${emoji} Você <b>gastou ${fmtBRL(exp)}</b> de ${fmtBRL(inc)} de receita, sobrando <b>${fmtBRL(bal)}</b> (${poupanca.toFixed(0)}% de poupança). ${poupanca>=20?'Ótimo! Você está acima da taxa recomendada de 10-20%.':poupanca>=10?'Está dentro da faixa saudável de 10-20% de poupança.':'Tente guardar pelo menos 10% da renda — pequenos ajustes fazem diferença.'}`);
-    } else {
-      paras.push(`🔴 Atenção: suas despesas <b>(${fmtBRL(exp)})</b> superaram a receita <b>(${fmtBRL(inc)})</b> em ${fmtBRL(Math.abs(bal))} este mês. Verifique quais gastos variáveis podem ser reduzidos nos próximos meses.`);
-    }
-  }
-
-  // ── Fixo vs variável ──
-  if(inc>0 && fixed>0){
-    if(pctFixed>60){
-      paras.push(`⚠️ Seus gastos fixos representam <b>${pctFixed.toFixed(0)}%</b> da sua renda — acima do recomendado (50%). Com ${fmtBRL(fixed)} comprometidos todo mês, o espaço para imprevistos fica pequeno. Vale revisar se algum fixo pode ser renegociado.`);
-    } else if(pctFixed>40){
-      paras.push(`📦 Seus gastos fixos são <b>${fmtBRL(fixed)}</b> (${pctFixed.toFixed(0)}% da renda) — dentro de um nível controlável. Os gastos variáveis somam ${fmtBRL(variable)}, que é onde você tem mais flexibilidade para economizar.`);
-    } else {
-      paras.push(`✅ Excelente estrutura de custos: apenas <b>${pctFixed.toFixed(0)}%</b> da sua renda vai para gastos fixos (${fmtBRL(fixed)}). Isso te dá bastante flexibilidade financeira.`);
-    }
-  }
-
-  // ── Top categoria ──
-  if(topCat){
-    const pctTop=exp>0?(topCat[1]/exp*100):0;
-    paras.push(`🏆 Sua maior categoria de gasto é <b>${topCat[0]}</b> com ${fmtBRL(topCat[1])} (${pctTop.toFixed(0)}% das despesas).${pctTop>40?' Essa categoria sozinha representa uma fatia grande — vale analisar se há como otimizá-la.':' Mantendo esse nível, seu orçamento está equilibrado.'}`);
-  }
-
-  // ── Comparação com histórico ──
-  if(avgHist>0 && exp>0){
-    const diffHist=exp-avgHist;
-    const pctDiff=Math.abs(diffHist/avgHist*100);
-    if(pctDiff>10){
-      if(diffHist>0){
-        paras.push(`📈 Comparando com sua média dos últimos meses (${fmtBRL(avgHist)}), você gastou <b>${fmtBRL(diffHist)} a mais</b> este mês. Fique de olho para não virar padrão.`);
-      } else {
-        paras.push(`📉 Comparando com sua média dos últimos meses (${fmtBRL(avgHist)}), você gastou <b>${fmtBRL(Math.abs(diffHist))} a menos</b> — ótima performance! 🎉`);
-      }
-    }
-  }
-
-  // ── Benchmark BR ──
-  if(inc>0){
-    const curiosidades=[];
-    if(inc>salMedioBR*2) curiosidades.push(`💡 Sua renda está acima de <b>90% dos trabalhadores brasileiros</b> (salário médio: ${fmtBRL(salMedioBR)}). Você tem uma capacidade de investimento acima da média — considere diversificar.`);
-    else if(inc>salMedioBR) curiosidades.push(`💡 Sua renda está acima da <b>média brasileira</b> de ${fmtBRL(salMedioBR)}/mês. Aproveite para construir uma reserva de emergência de 3-6 meses de despesas (${fmtBRL(exp*3)}–${fmtBRL(exp*6)}).`);
-
-    if(alimentacao>0){
-      if(alimentacao>gastoAlimSP*1.2) curiosidades.push(`🍽️ Seu gasto com alimentação (${fmtBRL(alimentacao)}) está <b>acima da média de SP</b> (${fmtBRL(gastoAlimSP)}/mês). Cozinhar em casa alguns dias pode gerar uma economia expressiva.`);
-      else if(alimentacao>0) curiosidades.push(`🍽️ Seu gasto com alimentação (${fmtBRL(alimentacao)}) está <b>dentro ou abaixo da média de SP</b> (${fmtBRL(gastoAlimSP)}/mês) — bom controle!`);
-    }
-
-    if(curiosidades.length) paras.push(curiosidades[0]);
-  }
-
-  return montarHTML(paras);
-}
-
-function montarHTML(paras){
-  return `<div style="font-size:13px;line-height:1.75;color:var(--text2)">
-    ${paras.map((p,i)=>`<p style="margin:0${i>0?';margin-top:10px':''}">${p}</p>`).join('')}
-    <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(94,234,212,.15);font-size:10px;color:var(--text3)">
-      Análise gerada com base nos seus dados · ${MONTHS[curMonth]} ${curYear}
+  // Loading animado com etapas
+  let step = 0;
+  const steps = ['🔍 Lendo seus dados...','📊 Comparando com meses anteriores...','🌐 Buscando contexto atual...','✍️ Redigindo análise...'];
+  content.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding:8px 0">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="spinner" style="width:22px;height:22px;border-width:2px;flex-shrink:0"></div>
+      <span id="insightsStepTxt" style="font-size:12.5px;color:var(--text2)">${steps[0]}</span>
     </div>
+    <div style="font-size:11px;color:var(--text3);padding-left:32px">Isso pode levar alguns segundos…</div>
   </div>`;
-}
+  btn.textContent = '⏳ Analisando...';
+
+  const stepInterval = setInterval(()=>{
+    step = (step+1) % steps.length;
+    const el = $('insightsStepTxt');
+    if(el) el.textContent = steps[step];
+  }, 2200);
+
+  try{
+    const payload = buildInsightsPayload();
+
+    if(!payload.hasData){
+      clearInterval(stepInterval);
+      content.innerHTML = `<div style="color:var(--text3);font-size:13px;text-align:center;padding:10px 0">
+        📭 Ainda não há lançamentos em ${MONTHS[curMonth]} ${curYear}.<br>
+        <span style="font-size:11px">Registre suas movimentações para gerar a análise.</span>
+      </div>`;
+      btn.textContent='↻ Atualizar'; btn.disabled=false;
+      return;
+    }
+
+    await streamInsights(payload, content);
+    insightsCache       = content.innerHTML;
+    insightsCacheMonth  = cacheKey;
+
+  } catch(e){
+    console.error('Insights error:', e);
+    const isKeyError = e.message.includes('API Key') || e.message.includes('401') || e.message.includes('403');
+    content.innerHTML = `<div style="font-size:12.5px;color:var(--text3);padding:4px 0;line-height:1.7">
+      ${isKeyError
+        ? `🔑 <b style="color:var(--text2)">Configure sua API Key</b> para usar a análise IA.<br>
+           <span style="font-size:11px">Vá em <button onclick="gotoPage('settings')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;padding:0;text-decoration:underline">⚙️ Configurações</button> e insira sua chave Anthropic (<a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--accent)">console.anthropic.com/keys</a>).</span>`
+        : `⚠️ Não foi possível gerar a análise: <b>${e.message}</b><br>
+           <span style="font-size:11px">Verifique sua conexão e tente novamente.</span>`
+      }
+    </div>`;
+  } finally{
+    clearInterval(stepInterval);
+    btn.textContent='↻ Atualizar'; btn.disabled=false;
+  }
+};
 
 function maybeAutoInsights(){
   const cacheKey=`${curYear}-${curMonth}`;
@@ -3520,13 +3630,38 @@ function renderSettings(){
         <button class="cat-chip-btn del" onclick="deleteCat(${idx})" title="Excluir">✕</button>
       </div>
     </div>`;
-  // We need global indices — getCats() returns all
   const all=getCats();
   const expChips=all.map((c,i)=>c.type==='expense'?makeChip(c,i):'').join('');
   const incChips=all.map((c,i)=>c.type==='income'?makeChip(c,i):'').join('');
   $('catListExpense').innerHTML=expChips||`<span style="font-size:12px;color:var(--text3)">Nenhuma categoria de despesa.</span>`;
   $('catListIncome').innerHTML=incChips||`<span style="font-size:12px;color:var(--text3)">Nenhuma categoria de receita.</span>`;
+  // API key status
+  const key=getApiKey();
+  const inp=$('settingsApiKey');
+  const st=$('apiKeyStatus');
+  if(inp&&st){
+    if(key){ inp.value=key; st.innerHTML='<span style="color:var(--accent)">✅ Chave salva — análise IA habilitada</span>'; }
+    else { inp.value=''; st.innerHTML='<span style="color:var(--text3)">⚠️ Sem chave configurada — análise IA indisponível</span>'; }
+  }
 }
+
+// ── API Key helpers (localStorage) ──
+function getApiKey(){ return localStorage.getItem('ff_anthropic_key')||''; }
+
+window.saveApiKey=function(){
+  const v=($('settingsApiKey').value||'').trim();
+  if(!v||!v.startsWith('sk-ant-')){ toast('⚠️','Chave inválida. Deve começar com sk-ant-'); return; }
+  localStorage.setItem('ff_anthropic_key',v);
+  $('apiKeyStatus').innerHTML='<span style="color:var(--accent)">✅ Chave salva com sucesso!</span>';
+  toast('✅','API Key salva!');
+};
+
+window.clearApiKey=function(){
+  localStorage.removeItem('ff_anthropic_key');
+  $('settingsApiKey').value='';
+  $('apiKeyStatus').innerHTML='<span style="color:var(--text3)">⚠️ Chave removida — análise IA indisponível</span>';
+  toast('🗑️','API Key removida.');
+};
 
 window.openAddCatModal=function(){
   editingCatIndex=-1; catModalType='expense'; selectedCatColor=PALETTE[0];
