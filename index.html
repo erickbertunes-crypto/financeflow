@@ -305,6 +305,24 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   .modal{padding:20px 16px}
   .form-row,.form-row-3{grid-template-columns:1fr}
 }
+/* SUBSCRIPTIONS */
+.sub-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;transition:border-color .2s;position:relative;overflow:hidden}
+.sub-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent5)}
+.sub-card.cancelled::before{background:var(--text3)}
+.sub-card.cancelled{opacity:.5}
+.sub-card:hover{border-color:var(--border2)}
+.sub-ico{width:40px;height:40px;border-radius:12px;background:rgba(167,139,250,.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.sub-name{font-size:14px;font-weight:600;margin-bottom:3px}
+.sub-meta{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sub-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--red);white-space:nowrap}
+.sub-val-yr{font-size:10px;color:var(--text3);margin-top:2px;text-align:right}
+.sub-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.sub-badge-active{background:rgba(94,234,212,.12);color:var(--accent);border:1px solid rgba(94,234,212,.25);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600}
+.sub-badge-cancelled{background:rgba(122,132,160,.1);color:var(--text3);border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600}
+.sub-list{display:flex;flex-direction:column;gap:10px}
+.sub-modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.sub-modal-ov.hidden{display:none!important}
+.sub-modal{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:28px;width:460px;max-width:95vw;position:relative}
 </style>
 </head>
 <body>
@@ -365,6 +383,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="nav-item" onclick="gotoPage('import')"><span class="ni">📸</span> Importar Fatura</div>
       <div class="nav-item" onclick="gotoPage('installments')"><span class="ni">🔄</span> Parcelamentos</div>
       <div class="nav-item" onclick="gotoPage('pix')"><span class="ni">⚡</span> Pix</div>
+      <div class="nav-item" onclick="gotoPage('subscriptions')"><span class="ni">🔁</span> Assinaturas</div>
       <div class="nav-sec">Análise</div>
       <div class="nav-item" onclick="gotoPage('budget')"><span class="ni">🎯</span> Orçamento</div>
       <div class="nav-item" onclick="gotoPage('cashflow')"><span class="ni">📈</span> Fluxo de Caixa</div>
@@ -738,6 +757,29 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="tx-list" id="ccList" style="max-height:500px"></div>
       </div>
     </div>
+    <!-- SUBSCRIPTIONS -->
+    <div class="page" id="page-subscriptions">
+      <div class="page-hdr">
+        <div><div class="page-title">Assinaturas</div><div class="page-sub">Cobranças recorrentes — refletem automaticamente em todos os meses</div></div>
+        <button class="btn btn-primary" onclick="openSubModal()">+ Nova Assinatura</button>
+      </div>
+      <div class="cg3" id="subSummaryCards">
+        <div class="card c-purple"><div class="card-ico">🔁</div><div class="card-lbl">Total Ativas</div><div class="card-val neg" id="subTotalActive">R$ 0</div><div class="card-sub2" id="subActiveCt">0 assinaturas</div></div>
+        <div class="card c-teal"><div class="card-ico">📅</div><div class="card-lbl">Gasto no Ano</div><div class="card-val neg" id="subTotalYear">R$ 0</div><div class="card-sub2" id="subYearCt">projeção anual</div></div>
+        <div class="card c-orange"><div class="card-ico">⏸️</div><div class="card-lbl">Canceladas</div><div class="card-val" id="subTotalCancelled">0</div><div class="card-sub2">assinaturas encerradas</div></div>
+      </div>
+      <div class="sec-card" style="margin-bottom:14px">
+        <div class="sec-hdr" style="display:flex;justify-content:space-between;align-items:center">
+          <div class="sec-title">Ativas</div>
+          <div id="subActiveTotal" style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--red)"></div>
+        </div>
+        <div style="padding:14px 18px"><div class="sub-list" id="subListActive"><div class="empty-st"><div class="empty-ico">🔁</div><div class="empty-txt">Nenhuma assinatura ativa.<br>Clique em "+ Nova Assinatura" para começar.</div></div></div></div>
+      </div>
+      <div class="sec-card" id="subCancelledSection" style="display:none">
+        <div class="sec-hdr"><div class="sec-title" style="color:var(--text3)">Canceladas</div></div>
+        <div style="padding:14px 18px"><div class="sub-list" id="subListCancelled"></div></div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -857,6 +899,59 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeBudgetModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveBudget()">Salvar Meta</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUBSCRIPTION MODAL -->
+<div class="sub-modal-ov hidden" id="subModal" onclick="if(event.target===this)closeSubModal()">
+  <div class="sub-modal">
+    <div class="modal-title"><span id="subModalTitle">Nova Assinatura</span><button class="btn-icon" onclick="closeSubModal()" style="font-size:17px">✕</button></div>
+    <div class="form-row">
+      <div class="form-group" style="margin:0"><label class="form-label">Nome *</label><input class="form-input" type="text" id="subDesc" placeholder="Ex: Netflix, Spotify..."></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Valor Mensal (R$) *</label><input class="form-input" type="number" id="subValue" placeholder="0,00" step="0.01" min="0"></div>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Categoria</label>
+        <select class="form-input" id="subCategory"></select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Forma de Pagamento</label>
+        <select class="form-input" id="subPayment">
+          <option value="card">Cartão de Crédito</option>
+          <option value="pix">Pix</option>
+          <option value="debit">Débito</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Data de Início *</label>
+        <input class="form-input" type="month" id="subStart">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Dia de Cobrança</label>
+        <input class="form-input" type="number" id="subDay" placeholder="Ex: 5" min="1" max="28" value="1">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:14px">
+      <label class="form-label">Ícone (emoji opcional)</label>
+      <input class="form-input" type="text" id="subIcon" placeholder="📱" maxlength="4" style="font-size:20px;text-align:center;width:70px">
+    </div>
+    <div id="subCancelGroup" style="display:none;margin-top:14px">
+      <div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2);border-radius:10px;padding:14px 16px">
+        <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px">⚠️ Cancelar Assinatura</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Escolha o mês em que a cobrança parou. Lançamentos anteriores são mantidos.</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input class="form-input" type="month" id="subCancelDate" style="flex:1">
+          <button class="btn" style="background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3);white-space:nowrap" onclick="cancelSubscription()">Confirmar Cancelamento</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" style="margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeSubModal()">Cancelar</button>
+      <button class="btn btn-primary" id="subSaveBtn" onclick="saveSubscription()">Salvar Assinatura</button>
     </div>
   </div>
 </div>
@@ -1121,12 +1216,12 @@ const txCol  =()=>collection(db,'users',curUser.uid,'transactions');
 
 async function loadUserData(){
   const snap=await getDoc(userRef());
-  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.monthlyReserves=d.monthlyReserves||{}; userData.monthlyRendimentos=d.monthlyRendimentos||{}; userData.patrimonio=d.patrimonio||0; userData.categories=d.categories||[]; }
+  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.monthlyReserves=d.monthlyReserves||{}; userData.monthlyRendimentos=d.monthlyRendimentos||{}; userData.patrimonio=d.patrimonio||0; userData.categories=d.categories||[]; userData.subscriptions=d.subscriptions||[]; }
   const txSnap=await getDocs(txCol());
   userData.transactions=[];
   txSnap.forEach(d=>userData.transactions.push({id:d.id,...d.data()}));
 }
-async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,monthlyReserves:userData.monthlyReserves||{},monthlyRendimentos:userData.monthlyRendimentos||{},patrimonio:userData.patrimonio||0,categories:userData.categories||[]},{merge:true}); }
+async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,monthlyReserves:userData.monthlyReserves||{},monthlyRendimentos:userData.monthlyRendimentos||{},patrimonio:userData.patrimonio||0,categories:userData.categories||[],subscriptions:userData.subscriptions||[]},{merge:true}); }
 async function fsAddTx(tx){ const{id,...data}=tx; const ref=await addDoc(txCol(),{...data,createdAt:serverTimestamp()}); return ref.id; }
 async function fsUpdateTx(id,data){ await setDoc(doc(db,'users',curUser.uid,'transactions',id),data,{merge:true}); }
 async function fsDeleteTx(id){ await deleteDoc(doc(db,'users',curUser.uid,'transactions',id)); }
@@ -1219,13 +1314,38 @@ function setupUI(){
 // MONTH NAV
 window.changeMonth=function(d){ curMonth+=d; if(curMonth>11){curMonth=0;curYear++;} if(curMonth<0){curMonth=11;curYear--;} updateMonthLabel(); renderAll(); maybeAutoInsights(); };
 function updateMonthLabel(){ $('mLabel').textContent=`${MONTHS_S[curMonth]} ${curYear}`; $('dashSub').textContent=`Visão geral de ${MONTHS[curMonth]} ${curYear}`; }
+// Gera transações virtuais de assinaturas para um mês/ano específico
+function getSubscriptionTxs(year, month){
+  const subs = userData.subscriptions || [];
+  const result = [];
+  for(const s of subs){
+    if(!s.active) continue;
+    const [sy, sm] = s.startDate.split('-').map(Number);
+    if(year*12+month < sy*12+(sm-1)) continue;
+    if(s.cancelledAt){
+      const [cy, cm] = s.cancelledAt.split('-').map(Number);
+      if(year*12+month >= cy*12+(cm-1)) continue;
+    }
+    const day = Math.min(s.dayOfMonth||1, 28);
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    result.push({
+      id:`sub_${s.id}_${year}_${month}`, desc:s.desc, value:s.value,
+      date:dateStr, competency:`${year}-${String(month+1).padStart(2,'0')}`,
+      category:s.category||'Assinaturas', expenseType:'fixed',
+      payment:s.payment||'card', status:'paid', type:'expense',
+      refund:false, installment:false, _isSub:true, _subId:s.id
+    });
+  }
+  return result;
+}
+
 function getMonthTx(){
-  return userData.transactions.filter(t=>{
-    // Use competency if set, otherwise fall back to date
+  const manual = userData.transactions.filter(t=>{
     const compStr = t.competency || t.date.substr(0,7);
     const [cy, cm] = compStr.split('-').map(Number);
     return cm-1 === curMonth && cy === curYear;
   });
+  return [...manual, ...getSubscriptionTxs(curYear, curMonth)];
 }
 
 // NAVIGATION
@@ -1241,6 +1361,7 @@ window.gotoPage=function(name){
   if(name==='cashflow')renderCashflow();
   if(name==='shared')renderSharedPage();
   if(name==='pix')renderPixPage();
+  if(name==='subscriptions')renderSubscriptions();
   if(name==='import')renderImportPage();
   if(name==='settings')renderSettings();
 };
@@ -1406,6 +1527,7 @@ window.saveTx=async function(){
 };
 
 window.deleteTx=async function(id){
+  if(id && id.startsWith('sub_')){ toast('⚠️','Para remover uma assinatura, vá até a aba Assinaturas.'); return; }
   if(!confirm('Remover este lançamento?'))return;
   try{ await fsDeleteTx(id); userData.transactions=userData.transactions.filter(t=>t.id!==id); renderAll(); toast('🗑️','Removido!'); }
   catch(e){ toast('❌','Erro ao remover.'); }
@@ -1416,7 +1538,11 @@ function txItem(t){
   const inst=t.installment?`<span class="badge b-purple">📦 ${t.installCurrent||'?'}/${t.installTotal||'?'}</span>`:'';
   const tp=t.type==='expense'?(t.expenseType==='fixed'?'<span class="badge b-info">Fixo</span>':'<span class="badge b-orange">Variável</span>'):'';
   const st=t.status==='paid'?'<span class="badge b-ok">Pago</span>':'<span class="badge b-warn">Pendente</span>';
-  return `<div class="tx-item"><div class="tx-dot" style="background:${catColor(t.category)}"></div><div><div class="tx-name">${t.desc}</div><div class="tx-meta">${fmtDate(t.date)} · ${catIcon(t.category)} ${t.category||'—'} · ${PAY_LABEL[t.payment]||'—'} ${st} ${inst} ${tp}</div></div><div class="tx-amt ${t.type}">${t.type==='expense'?'−':'+'}${fmtBRL(t.value)}</div><div style="display:flex;gap:3px"><button class="btn-icon" onclick="openTxModal('${t.id}')" title="Editar">✏️</button><button class="btn-icon" onclick="deleteTx('${t.id}')" title="Excluir">🗑️</button></div></div>`;
+  const subBadge=t._isSub?'<span class="badge" style="background:rgba(167,139,250,.15);color:var(--accent5);border:1px solid rgba(167,139,250,.25)">🔁 Assinatura</span>':'';
+  const actions=t._isSub
+    ?`<button class="btn-icon" onclick="openSubModal('${t._subId}')" title="Ver assinatura">🔁</button>`
+    :`<button class="btn-icon" onclick="openTxModal('${t.id}')" title="Editar">✏️</button><button class="btn-icon" onclick="deleteTx('${t.id}')" title="Excluir">🗑️</button>`;
+  return `<div class="tx-item"><div class="tx-dot" style="background:${catColor(t.category)}"></div><div><div class="tx-name">${t.desc}</div><div class="tx-meta">${fmtDate(t.date)} · ${catIcon(t.category)} ${t.category||'—'} · ${PAY_LABEL[t.payment]||'—'} ${st} ${inst} ${tp} ${subBadge}</div></div><div class="tx-amt ${t.type}">${t.type==='expense'?'−':'+'}${fmtBRL(t.value)}</div><div style="display:flex;gap:3px">${actions}</div></div>`;
 }
 
 // ===== AVERAGE HELPERS =====
@@ -1433,16 +1559,17 @@ function calcAnnualAvg(filterFn){
   const now=new Date();
   const withData=[];
   for(let m=0;m<12;m++){
-    // Skip future months only when viewing the current real year
     if(curYear===now.getFullYear() && m > now.getMonth()) continue;
-    const val=userData.transactions.filter(t=>{
+    const manualVal=userData.transactions.filter(t=>{
       const co=getTxComp(t);
       return co.month===m && co.year===curYear && filterFn(t);
     }).reduce((s,t)=>s+t.value,0);
+    const subVal=getSubscriptionTxs(curYear,m).filter(filterFn).reduce((s,t)=>s+t.value,0);
+    const val=manualVal+subVal;
     if(val>0) withData.push(val);
   }
   if(!withData.length) return 0;
-  return withData.reduce((s,v)=>s+v,0) / withData.length; // avg of months that HAVE data
+  return withData.reduce((s,v)=>s+v,0) / withData.length;
 }
 
 // Category monthly history helper — uses competency
@@ -1613,8 +1740,11 @@ window.clearSelection=function(){
 
 window.deleteSelected=async function(){
   if(!selectedTxIds.size) return;
-  if(!confirm(`Apagar ${selectedTxIds.size} lançamento(s)?`)) return;
-  const ids=[...selectedTxIds];
+  const ids=[...selectedTxIds].filter(id=>!id.startsWith('sub_'));
+  const subCount=[...selectedTxIds].filter(id=>id.startsWith('sub_')).length;
+  if(subCount>0) toast('⚠️',`${subCount} assinatura(s) ignorada(s) — gerencie na aba Assinaturas.`);
+  if(!ids.length) return;
+  if(!confirm(`Apagar ${ids.length} lançamento(s)?`)) return;
   for(const id of ids){
     try{ await fsDeleteTx(id); userData.transactions=userData.transactions.filter(t=>t.id!==id); }catch(e){}
   }
@@ -1710,6 +1840,16 @@ function renderTxPage(){
     const tp=t.type==='expense'?(t.expenseType==='fixed'?'<span class="badge b-info">Fixo</span>':'<span class="badge b-orange">Variável</span>'):'';
     const st=t.status==='paid'?'<span class="badge b-ok">Pago</span>':'<span class="badge b-warn">Pendente</span>';
     const compBadge=t.competency&&t.competency!==t.date.substr(0,7)?`<span class="badge" style="background:rgba(251,191,36,.12);color:var(--yellow)">Comp: ${t.competency}</span>`:'';
+    if(t._isSub){
+      const subBadge='<span class="badge" style="background:rgba(167,139,250,.15);color:var(--accent5);border:1px solid rgba(167,139,250,.25)">🔁 Assinatura</span>';
+      return `<div class="tx-item" style="opacity:.85">
+        <div style="width:14px;flex-shrink:0"></div>
+        <div><div class="tx-name">${t.desc}</div>
+        <div class="tx-meta">${fmtDate(t.date)} · ${catIcon(t.category)} ${t.category||'—'} · ${PAY_LABEL[t.payment]||'—'} ${st} ${tp} ${subBadge}</div></div>
+        <div class="tx-amt expense">−${fmtBRL(t.value)}</div>
+        <div style="display:flex;gap:3px"><button class="btn-icon" onclick="openSubModal('${t._subId}')" title="Ver assinatura">🔁</button></div>
+      </div>`;
+    }
   return `<div class="tx-item${isSelected?' selected':''}" data-txid="${t.id}">
       <input type="checkbox" class="tx-chk" data-id="${t.id}" ${isSelected?'checked':''} onchange="toggleTxSelect('${t.id}',this)">
       <div><div class="tx-name">${t.desc}</div>
@@ -2093,7 +2233,8 @@ function renderCashflow(){
   const reservaInicial=parseFloat($('cfPatrimonio')?.value)||userData.patrimonio||0;
 
   const monthly=MONTHS_S.map((_,m)=>{
-    const txs=userData.transactions.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
+    const manualTxs=userData.transactions.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
+    const txs=[...manualTxs, ...getSubscriptionTxs(year, m)];
     const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
     const fi=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
     const va=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
@@ -2239,6 +2380,7 @@ function renderAll(){
   if(active==='installments')renderInstallments();
   if(active==='shared')renderSharedPage();
   if(active==='pix')renderPixPage();
+  if(active==='subscriptions')renderSubscriptions();
   if(active==='settings')renderSettings();
 }
 
@@ -2403,7 +2545,7 @@ async function renderShared(status){
   const partnerName=status.partnerName||status.partnerEmail;
   const myName=curUser.displayName||curUser.email.split('@')[0];
 
-  let partnerTxs=[], partnerPatrimonio=0, partnerMonthlyReserves={}, partnerMonthlyRendimentos={};
+  let partnerTxs=[], partnerPatrimonio=0, partnerMonthlyReserves={}, partnerMonthlyRendimentos={}, partnerSubscriptions=[];
   try{
     const pTxSnap=await getDocs(collection(db,'users',partnerUid,'transactions'));
     pTxSnap.forEach(d=>partnerTxs.push({id:d.id,...d.data()}));
@@ -2412,6 +2554,7 @@ async function renderShared(status){
       partnerPatrimonio=pSettings.data().patrimonio||0;
       partnerMonthlyReserves=pSettings.data().monthlyReserves||{};
       partnerMonthlyRendimentos=pSettings.data().monthlyRendimentos||{};
+      partnerSubscriptions=pSettings.data().subscriptions||[];
     }
   }catch(e){ toast('⚠️','Não foi possível carregar os dados do parceiro.'); }
 
@@ -2419,6 +2562,19 @@ async function renderShared(status){
   const myPatrimonio=userData.patrimonio||0;
   const myMonthlyReserves=userData.monthlyReserves||{};
   const myMonthlyRendimentos=userData.monthlyRendimentos||{};
+
+  // Gera txs virtuais de assinaturas para qualquer lista de subs
+  function getSubTxsFor(subs, yr, m){
+    const result=[];
+    for(const s of subs){
+      if(!s.active) continue;
+      const [sy,sm]=s.startDate.split('-').map(Number);
+      if(yr*12+m < sy*12+(sm-1)) continue;
+      if(s.cancelledAt){const [cy,cm]=s.cancelledAt.split('-').map(Number);if(yr*12+m>=cy*12+(cm-1))continue;}
+      result.push({value:s.value,type:'expense',expenseType:'fixed',payment:s.payment||'card'});
+    }
+    return result;
+  }
 
   // Get per-month reserve for a given reserves map and year/month
   function getReserveForMonth(reservesMap, yr, m){
@@ -2430,12 +2586,14 @@ async function renderShared(status){
     return rendimentosMap[key]!==undefined ? rendimentosMap[key] : 0;
   }
 
-  function calcYear(txs, patrimIni, reservesMap, rendimentosMap){
+  function calcYear(txs, patrimIni, reservesMap, rendimentosMap, subs){
     const monthly=MONTHS_S.map((_,m)=>{
       const mt=txs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
-      const inc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
-      const fi=mt.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
-      const va=mt.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
+      const subTxs=getSubTxsFor(subs||[], year, m);
+      const all=[...mt,...subTxs];
+      const inc=all.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+      const fi=all.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
+      const va=all.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
       const exp=fi+va; const bal=inc-exp;
       const hasData=inc>0||exp>0;
       const reserve=hasData ? getReserveForMonth(reservesMap, year, m) : 0;
@@ -2455,8 +2613,8 @@ async function renderShared(status){
     return{monthly,reservaAcc,totInc,totExp,totFi,totVa,totRes,totRend,totBal,finalPat:reservaAcc[11]};
   }
 
-  const me=calcYear(myTxs,myPatrimonio,myMonthlyReserves,myMonthlyRendimentos);
-  const pt=calcYear(partnerTxs,partnerPatrimonio,partnerMonthlyReserves,partnerMonthlyRendimentos);
+  const me=calcYear(myTxs,myPatrimonio,myMonthlyReserves,myMonthlyRendimentos,userData.subscriptions||[]);
+  const pt=calcYear(partnerTxs,partnerPatrimonio,partnerMonthlyReserves,partnerMonthlyRendimentos,partnerSubscriptions);
   const tog={
     monthly:MONTHS_S.map((_,m)=>({
       inc:me.monthly[m].inc+pt.monthly[m].inc,
@@ -2543,6 +2701,179 @@ function renderPixPage(){
   if(pixFilter==='in') txs=txs.filter(t=>t.type==='income');
   if(search) txs=txs.filter(t=>(t.desc+' '+t.category).toLowerCase().includes(search));
   $('pixList').innerHTML=txs.length?txs.map(txItem).join(''):`<div class="empty-st"><div class="empty-ico">⚡</div><div class="empty-txt">Nenhuma transação Pix encontrada.<br>Ao adicionar um lançamento com pagamento Pix ele aparece aqui.</div></div>`;
+}
+
+// ============ SUBSCRIPTIONS ============
+let editingSubId = null;
+
+// Gera transações virtuais de assinaturas para um mês/ano específico
+// Retorna array no mesmo formato de userData.transactions (sem id real)
+// Modal
+window.openSubModal = function(id){
+  editingSubId = id || null;
+  const sub = id ? (userData.subscriptions||[]).find(s=>s.id===id) : null;
+  $('subModalTitle').textContent = sub ? 'Editar Assinatura' : 'Nova Assinatura';
+  $('subDesc').value   = sub?.desc  || '';
+  $('subValue').value  = sub?.value || '';
+  $('subDay').value    = sub?.dayOfMonth || 1;
+  $('subIcon').value   = sub?.icon  || '';
+  $('subPayment').value= sub?.payment||'card';
+  // populate categories
+  const cats = getCats().filter(c=>c.type==='expense');
+  $('subCategory').innerHTML = cats.map(c=>`<option value="${c.name}" ${(sub?.category||'Assinaturas')===c.name?'selected':''}>${c.icon||''} ${c.name}</option>`).join('');
+  // start date
+  const today = new Date();
+  $('subStart').value = sub?.startDate || `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  // cancel group only for existing active subs
+  $('subCancelGroup').style.display = (sub && sub.active) ? 'block' : 'none';
+  $('subCancelDate').value = sub?.cancelledAt || `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  $('subSaveBtn').textContent = sub ? 'Salvar Alterações' : 'Salvar Assinatura';
+  $('subModal').classList.remove('hidden');
+};
+
+window.closeSubModal = function(){
+  $('subModal').classList.add('hidden');
+  editingSubId = null;
+};
+
+window.saveSubscription = async function(){
+  const desc  = $('subDesc').value.trim();
+  const value = parseFloat($('subValue').value);
+  if(!desc){ toast('⚠️','Informe o nome da assinatura.'); return; }
+  if(!value||value<=0){ toast('⚠️','Informe um valor válido.'); return; }
+  if(!userData.subscriptions) userData.subscriptions=[];
+  if(editingSubId){
+    const idx = userData.subscriptions.findIndex(s=>s.id===editingSubId);
+    if(idx!==-1){
+      userData.subscriptions[idx] = {
+        ...userData.subscriptions[idx],
+        desc, value,
+        category: $('subCategory').value,
+        payment:  $('subPayment').value,
+        dayOfMonth: parseInt($('subDay').value)||1,
+        icon: $('subIcon').value.trim(),
+        startDate: $('subStart').value,
+      };
+    }
+  } else {
+    userData.subscriptions.push({
+      id: Date.now().toString(),
+      desc, value,
+      category: $('subCategory').value,
+      payment:  $('subPayment').value,
+      dayOfMonth: parseInt($('subDay').value)||1,
+      icon: $('subIcon').value.trim() || '📱',
+      startDate: $('subStart').value,
+      active: true,
+      cancelledAt: null
+    });
+  }
+  await saveSettings();
+  closeSubModal();
+  renderSubscriptions();
+  renderAll();
+  toast('✅', editingSubId ? 'Assinatura atualizada!' : 'Assinatura adicionada!');
+};
+
+window.cancelSubscription = async function(){
+  if(!editingSubId) return;
+  const cancelDate = $('subCancelDate').value;
+  if(!cancelDate){ toast('⚠️','Selecione o mês de cancelamento.'); return; }
+  const idx = (userData.subscriptions||[]).findIndex(s=>s.id===editingSubId);
+  if(idx===-1) return;
+  if(!confirm(`Cancelar "${userData.subscriptions[idx].desc}" a partir de ${cancelDate}?`)) return;
+  userData.subscriptions[idx].active = false;
+  userData.subscriptions[idx].cancelledAt = cancelDate;
+  await saveSettings();
+  closeSubModal();
+  renderSubscriptions();
+  renderAll();
+  toast('⏸️','Assinatura cancelada.');
+};
+
+window.deleteSubscription = async function(id){
+  if(!confirm('Excluir esta assinatura permanentemente?')) return;
+  userData.subscriptions = (userData.subscriptions||[]).filter(s=>s.id!==id);
+  await saveSettings();
+  renderSubscriptions();
+  renderAll();
+  toast('🗑️','Assinatura removida.');
+};
+
+window.reactivateSubscription = async function(id){
+  const idx = (userData.subscriptions||[]).findIndex(s=>s.id===id);
+  if(idx===-1) return;
+  userData.subscriptions[idx].active = true;
+  userData.subscriptions[idx].cancelledAt = null;
+  await saveSettings();
+  renderSubscriptions();
+  renderAll();
+  toast('✅','Assinatura reativada!');
+};
+
+function renderSubscriptions(){
+  const subs = userData.subscriptions || [];
+  const active    = subs.filter(s=>s.active);
+  const cancelled = subs.filter(s=>!s.active);
+  const totalActive  = active.reduce((s,x)=>s+x.value,0);
+  const totalYear    = totalActive * 12;
+
+  $('subTotalActive').textContent  = fmtBRL(totalActive);
+  $('subActiveCt').textContent     = `${active.length} assinatura${active.length!==1?'s':''}`;
+  $('subTotalYear').textContent    = fmtBRL(totalYear);
+  $('subTotalCancelled').textContent= cancelled.length;
+  $('subActiveTotal').textContent  = active.length ? `${fmtBRL(totalActive)}/mês` : '';
+
+  function subCard(s){
+    const icon  = s.icon || '📱';
+    const start = s.startDate ? s.startDate.split('-').reverse().slice(1).join('/') : '—';
+    const pay   = PAY_LABEL[s.payment]||s.payment;
+    const cat   = s.category||'Assinaturas';
+    const badge = s.active
+      ? `<span class="sub-badge-active">● Ativa</span>`
+      : `<span class="sub-badge-cancelled">⏸ Cancelada</span>`;
+    const cancelInfo = !s.active && s.cancelledAt
+      ? `<span>Encerrou ${s.cancelledAt.split('-').reverse().slice(1).join('/')}</span>` : '';
+    const actions = s.active
+      ? `<div style="display:flex;gap:4px">
+           <button class="btn-icon" onclick="openSubModal('${s.id}')" title="Editar">✏️</button>
+           <button class="btn-icon" onclick="deleteSubscription('${s.id}')" title="Excluir">🗑️</button>
+         </div>`
+      : `<div style="display:flex;gap:4px">
+           <button class="btn-icon" title="Reativar" onclick="reactivateSubscription('${s.id}')">▶️</button>
+           <button class="btn-icon" onclick="deleteSubscription('${s.id}')" title="Excluir">🗑️</button>
+         </div>`;
+    return `<div class="sub-card${s.active?'':' cancelled'}">
+      <div class="sub-ico">${icon}</div>
+      <div>
+        <div class="sub-name">${s.desc}</div>
+        <div class="sub-meta">
+          ${badge}
+          <span>${cat}</span>
+          <span>${pay}</span>
+          <span>Desde ${start}</span>
+          <span>Todo dia ${s.dayOfMonth||1}</span>
+          ${cancelInfo}
+        </div>
+      </div>
+      <div class="sub-actions">
+        <div class="sub-val">${s.active?'−':''}${fmtBRL(s.value)}</div>
+        <div class="sub-val-yr">${s.active?fmtBRL(s.value*12)+'/ano':''}</div>
+        ${actions}
+      </div>
+    </div>`;
+  }
+
+  $('subListActive').innerHTML = active.length
+    ? active.map(subCard).join('')
+    : `<div class="empty-st"><div class="empty-ico">🔁</div><div class="empty-txt">Nenhuma assinatura ativa.<br>Clique em "+ Nova Assinatura" para começar.</div></div>`;
+
+  if(cancelled.length){
+    $('subCancelledSection').style.display='block';
+    $('subListCancelled').innerHTML = cancelled.map(subCard).join('');
+  } else {
+    $('subCancelledSection').style.display='none';
+  }
 }
 
 // TOAST
