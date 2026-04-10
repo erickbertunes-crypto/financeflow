@@ -347,6 +347,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sub-modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .sub-modal-ov.hidden{display:none!important}
 .sub-modal{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:28px;width:460px;max-width:95vw;position:relative}
+/* PROFILE PAGE */
+.profile-avatar-wrap{position:relative;width:96px;height:96px;cursor:pointer;flex-shrink:0}
+.profile-avatar{width:96px;height:96px;border-radius:50%;object-fit:cover;background:linear-gradient(135deg,var(--accent5),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#fff;font-family:'Syne',sans-serif;overflow:hidden}
+.profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.profile-avatar-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:18px}
+.profile-avatar-wrap:hover .profile-avatar-overlay{opacity:1}
+.profile-stat{background:var(--surface2);border-radius:12px;padding:14px 18px;text-align:center}
+.profile-stat-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--accent)}
+.profile-stat-lbl{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-top:3px}
 </style>
 </head>
 <body>
@@ -415,10 +424,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="nav-item" onclick="gotoPage('credit')"><span class="ni">💳</span> Cartão de Crédito</div>
       <div class="nav-sec">Sistema</div>
       <div class="nav-item" onclick="gotoPage('settings')"><span class="ni">⚙️</span> Configurações</div>
+      <div class="nav-item" onclick="gotoPage('profile')"><span class="ni">👤</span> Perfil</div>
     </div>
     <div class="sidebar-foot">
-      <div class="user-row">
-        <div class="user-av" id="uAv">?</div>
+      <div class="user-row" onclick="gotoPage('profile')" style="cursor:pointer;border-radius:10px;padding:6px 4px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">
+        <div class="user-av" id="uAv" style="overflow:hidden;flex-shrink:0">?</div>
         <div style="overflow:hidden;min-width:0"><div class="user-name" id="uName">—</div><div class="user-email" id="uEmail">—</div></div>
       </div>
       <div class="month-nav">
@@ -844,6 +854,75 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="sec-card" id="subCancelledSection" style="display:none">
         <div class="sec-hdr"><div class="sec-title" style="color:var(--text3)">Canceladas</div></div>
         <div style="padding:14px 18px"><div class="sub-list" id="subListCancelled"></div></div>
+      </div>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div class="page" id="page-profile">
+      <div class="page-hdr">
+        <div><div class="page-title">Meu Perfil</div><div class="page-sub">Personalize como você aparece no app</div></div>
+      </div>
+
+      <!-- PHOTO + NAME CARD -->
+      <div class="sec-card" style="margin-bottom:18px">
+        <div class="sec-hdr"><div class="sec-title">Foto e Nome</div></div>
+        <div style="padding:24px 24px;display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+          <!-- Avatar clickable -->
+          <!-- Avatar clickable via label -->
+          <label for="profilePhotoInput" class="profile-avatar-wrap" title="Alterar foto" style="cursor:pointer">
+            <div class="profile-avatar" id="profileAvatar">?</div>
+            <div class="profile-avatar-overlay">📷</div>
+          </label>
+          <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;position:absolute;width:0;height:0" onchange="handleProfilePhoto(this)">
+
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:11px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:6px">Nome de exibição</div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <input class="form-input" type="text" id="profileNameInput" placeholder="Seu nome..." style="flex:1;min-width:180px">
+              <button class="btn btn-primary" onclick="saveProfileName()" style="white-space:nowrap">💾 Salvar Nome</button>
+            </div>
+            <div id="profileNameStatus" style="margin-top:8px;font-size:11.5px;min-height:16px;color:var(--text3)"></div>
+            <div style="margin-top:10px;font-size:11px;color:var(--text3)">Clique na foto para trocar · Formatos: JPG, PNG, WebP</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT INFO -->
+      <div class="sec-card" style="margin-bottom:18px">
+        <div class="sec-hdr"><div class="sec-title">Conta</div></div>
+        <div style="padding:18px 24px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:12px;color:var(--text3)">E-mail</span>
+            <span style="font-size:13px;font-weight:500" id="profileEmail">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:12px;color:var(--text3)">UID</span>
+            <span style="font-size:11px;color:var(--text3);font-family:monospace" id="profileUid">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
+            <span style="font-size:12px;color:var(--text3)">Membro desde</span>
+            <span style="font-size:13px" id="profileSince">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="sec-card">
+        <div class="sec-hdr"><div class="sec-title">Estatísticas</div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:18px 24px">
+          <div class="profile-stat">
+            <div class="profile-stat-val" id="profileStatTx">—</div>
+            <div class="profile-stat-lbl">Lançamentos</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-val" id="profileStatCats">—</div>
+            <div class="profile-stat-lbl">Categorias</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-val" id="profileStatSubs">—</div>
+            <div class="profile-stat-lbl">Assinaturas</div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -1282,12 +1361,12 @@ const txCol  =()=>collection(db,'users',curUser.uid,'transactions');
 
 async function loadUserData(){
   const snap=await getDoc(userRef());
-  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.monthlyReserves=d.monthlyReserves||{}; userData.monthlyRendimentos=d.monthlyRendimentos||{}; userData.patrimonio=d.patrimonio||0; userData.categories=d.categories||[]; userData.subscriptions=d.subscriptions||[]; }
+  if(snap.exists()){ const d=snap.data(); userData.budgets=d.budgets||{}; userData.cardLimit=d.cardLimit||0; userData.reserve=d.reserve||0; userData.monthlyReserves=d.monthlyReserves||{}; userData.monthlyRendimentos=d.monthlyRendimentos||{}; userData.patrimonio=d.patrimonio||0; userData.categories=d.categories||[]; userData.subscriptions=d.subscriptions||[]; userData.photoBase64=d.photoBase64||''; }
   const txSnap=await getDocs(txCol());
   userData.transactions=[];
   txSnap.forEach(d=>userData.transactions.push({id:d.id,...d.data()}));
 }
-async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,monthlyReserves:userData.monthlyReserves||{},monthlyRendimentos:userData.monthlyRendimentos||{},patrimonio:userData.patrimonio||0,categories:userData.categories||[],subscriptions:userData.subscriptions||[]},{merge:true}); }
+async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,monthlyReserves:userData.monthlyReserves||{},monthlyRendimentos:userData.monthlyRendimentos||{},patrimonio:userData.patrimonio||0,categories:userData.categories||[],subscriptions:userData.subscriptions||[],photoBase64:userData.photoBase64||''},{merge:true}); }
 async function fsAddTx(tx){ const{id,...data}=tx; const ref=await addDoc(txCol(),{...data,createdAt:serverTimestamp()}); return ref.id; }
 async function fsUpdateTx(id,data){ await setDoc(doc(db,'users',curUser.uid,'transactions',id),data,{merge:true}); }
 async function fsDeleteTx(id){ await deleteDoc(doc(db,'users',curUser.uid,'transactions',id)); }
@@ -1365,14 +1444,24 @@ onAuthStateChanged(auth,async user=>{
   }
 });
 
+function applyAvatarUI(){
+  const name=curUser?.displayName||curUser?.email?.split('@')[0]||'?';
+  const av=$('uAv');
+  if(userData.photoBase64){
+    av.innerHTML=`<img src="${userData.photoBase64}" alt="foto" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    av.innerHTML='';
+    av.textContent=name.charAt(0).toUpperCase();
+  }
+}
+
 function setupUI(){
   const name=curUser.displayName||curUser.email.split('@')[0];
-  $('uAv').textContent=name.charAt(0).toUpperCase();
   $('uName').textContent=name; $('uEmail').textContent=curUser.email;
+  applyAvatarUI();
   updateMonthLabel();
   const years=[...new Set(userData.transactions.map(t=>getTxComp(t).year).concat([curYear]))].sort();
   $('cfYear').innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); $('cfYear').value=curYear;
-  // cfReserve field removed — per-month reserves used instead (ignore legacy global reserve)
   if(userData.patrimonio>0 && $('cfPatrimonio')) $('cfPatrimonio').value=userData.patrimonio;
   populateCatSelects();
 }
@@ -1430,6 +1519,7 @@ window.gotoPage=function(name){
   if(name==='subscriptions')renderSubscriptions();
   if(name==='import')renderImportPage();
   if(name==='settings')renderSettings();
+  if(name==='profile')renderProfile();
 };
 
 // TX MODAL
@@ -2453,6 +2543,7 @@ function renderAll(){
   if(active==='pix')renderPixPage();
   if(active==='subscriptions')renderSubscriptions();
   if(active==='settings')renderSettings();
+  if(active==='profile')renderProfile();
 }
 
 // ============ SHARED CASHFLOW ============
@@ -2616,7 +2707,7 @@ async function renderShared(status){
   const partnerName=status.partnerName||status.partnerEmail;
   const myName=curUser.displayName||curUser.email.split('@')[0];
 
-  let partnerTxs=[], partnerPatrimonio=0, partnerMonthlyReserves={}, partnerMonthlyRendimentos={}, partnerSubscriptions=[];
+  let partnerTxs=[], partnerPatrimonio=0, partnerMonthlyReserves={}, partnerMonthlyRendimentos={}, partnerSubscriptions=[], partnerPhoto='';
   try{
     const pTxSnap=await getDocs(collection(db,'users',partnerUid,'transactions'));
     pTxSnap.forEach(d=>partnerTxs.push({id:d.id,...d.data()}));
@@ -2626,6 +2717,7 @@ async function renderShared(status){
       partnerMonthlyReserves=pSettings.data().monthlyReserves||{};
       partnerMonthlyRendimentos=pSettings.data().monthlyRendimentos||{};
       partnerSubscriptions=pSettings.data().subscriptions||[];
+      partnerPhoto=pSettings.data().photoBase64||'';
     }
   }catch(e){ toast('⚠️','Não foi possível carregar os dados do parceiro.'); }
 
@@ -2709,7 +2801,13 @@ async function renderShared(status){
   tog.reservaAcc=togResAcc; tog.finalPat=togResAcc[11];
 
   // Build a single clean table for one person
-  function buildPersonCards(label, d, reservaAcc, accentColor, hasReserve){
+  function buildPersonCards(label, d, reservaAcc, accentColor, hasReserve, photo){
+    const isConsolidado = label.includes('Consolidado');
+    const avatarHtml = isConsolidado
+      ? `<span style="font-size:18px">💑</span>`
+      : photo
+        ? `<img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+        : `<span style="font-size:15px;font-weight:700;color:#fff">${label.charAt(0).toUpperCase()}</span>`;
     const hasRend = d.totRend > 0;
     const sumItems = [
       {lbl:'Receitas', val:d.totInc, color:'var(--accent)'},
@@ -2743,7 +2841,10 @@ async function renderShared(status){
 
     return `<div class="sec-card" style="margin-bottom:18px">
       <div class="sec-hdr" style="background:${accentColor}18;border-bottom-color:${accentColor}30;flex-wrap:wrap;gap:8px">
-        <div class="sec-title" style="color:${accentColor}">👤 ${label}</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:50%;background:${accentColor};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;box-shadow:0 0 0 2px ${accentColor}44">${avatarHtml}</div>
+          <div class="sec-title" style="color:${accentColor}">${label}</div>
+        </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
           ${sumItems.map(s=>`<span style="font-size:11px;color:var(--text3)">${s.lbl}: <b style="color:${s.color}">${fmtBRL(Math.abs(s.val))}</b></span>`).join('')}
         </div>
@@ -2753,9 +2854,9 @@ async function renderShared(status){
   }
 
   $('sharedTables').innerHTML=
-    buildPersonCards(myName, me, me.reservaAcc, 'var(--accent)', me.totRes>0)+
-    buildPersonCards(partnerName, pt, pt.reservaAcc, 'var(--accent2)', pt.totRes>0)+
-    buildPersonCards('Consolidado — Juntos', tog, togResAcc, 'var(--accent5)', me.totRes>0||pt.totRes>0);
+    buildPersonCards(myName, me, me.reservaAcc, 'var(--accent)', me.totRes>0, userData.photoBase64||'')+
+    buildPersonCards(partnerName, pt, pt.reservaAcc, 'var(--accent2)', pt.totRes>0, partnerPhoto)+
+    buildPersonCards('Consolidado — Juntos', tog, togResAcc, 'var(--accent5)', me.totRes>0||pt.totRes>0, '');
 
   $('sharedSub').textContent=`${myName} & ${partnerName} — ${year}`;
 }
@@ -3862,6 +3963,86 @@ window.deleteCat=async function(idx){
   renderAll();
   toast('🗑️',`Categoria "${cat.name}" removida.`);
 };
+
+// ============ PROFILE ============
+function renderProfile(){
+  const name = curUser?.displayName||curUser?.email?.split('@')[0]||'?';
+  // Avatar grande
+  const bigAv = $('profileAvatar');
+  if(userData.photoBase64){
+    bigAv.innerHTML=`<img src="${userData.photoBase64}" alt="foto" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    bigAv.innerHTML='';
+    bigAv.textContent=name.charAt(0).toUpperCase();
+  }
+  // Name input
+  const nameInp=$('profileNameInput');
+  if(nameInp && !nameInp.dataset.typed) nameInp.value=curUser.displayName||'';
+  // Account info
+  if($('profileEmail')) $('profileEmail').textContent=curUser.email;
+  if($('profileUid')) $('profileUid').textContent=curUser.uid;
+  if($('profileSince') && curUser.metadata?.creationTime){
+    const d=new Date(curUser.metadata.creationTime);
+    $('profileSince').textContent=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  }
+  // Stats
+  if($('profileStatTx')) $('profileStatTx').textContent=userData.transactions.length;
+  if($('profileStatCats')) $('profileStatCats').textContent=getCats().length;
+  if($('profileStatSubs')) $('profileStatSubs').textContent=(userData.subscriptions||[]).filter(s=>s.active).length;
+}
+
+window.handleProfilePhoto = async function(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 3*1024*1024){ toast('⚠️','Foto muito grande. Máximo 3MB.'); return; }
+
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    // Redimensiona para max 256px antes de salvar
+    const img = new Image();
+    img.onload = async function(){
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // Crop ao centro
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width-min)/2, sy = (img.height-min)/2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      const base64 = canvas.toDataURL('image/jpeg', 0.82);
+      userData.photoBase64 = base64;
+      await saveSettings();
+      applyAvatarUI();
+      renderProfile();
+      toast('✅','Foto atualizada!');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.saveProfileName = async function(){
+  const val = ($('profileNameInput').value||'').trim();
+  if(!val){ toast('⚠️','Informe um nome.'); return; }
+  const st = $('profileNameStatus');
+  st.textContent = 'Salvando…'; st.style.color='var(--text3)';
+  try{
+    await updateProfile(curUser, {displayName: val});
+    $('uName').textContent = val;
+    applyAvatarUI();
+    st.innerHTML = '<span style="color:var(--accent)">✅ Nome atualizado!</span>';
+    toast('✅','Nome atualizado!');
+    setTimeout(()=>{ if(st) st.textContent=''; }, 3000);
+  } catch(e){
+    st.innerHTML = `<span style="color:var(--red)">Erro: ${e.message}</span>`;
+  }
+};
+
+// mark input as typed so renderProfile doesn't reset it
+document.addEventListener('DOMContentLoaded',()=>{
+  const ni=$('profileNameInput');
+  if(ni) ni.addEventListener('input',()=>ni.dataset.typed='1');
+});
 </script>
 
 </body>
