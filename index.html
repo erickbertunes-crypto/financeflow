@@ -356,6 +356,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .profile-stat{background:var(--surface2);border-radius:12px;padding:14px 18px;text-align:center}
 .profile-stat-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--accent)}
 .profile-stat-lbl{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-top:3px}
+/* MONTH FILTER CHIPS */
+.mf-wrap{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.mf-chip{padding:4px 11px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11.5px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;user-select:none}
+.mf-chip:hover{border-color:var(--accent5);color:var(--accent5)}
+.mf-chip.active{background:var(--accent5);border-color:var(--accent5);color:#fff;font-weight:600}
+.mf-chip.mf-all{background:var(--surface3);border-color:var(--border2);color:var(--text2)}
+.mf-chip.mf-all.active{background:var(--accent);border-color:var(--accent);color:#0a0c10}
 </style>
 </head>
 <body>
@@ -635,7 +642,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="cf-annual-summary" id="cfAnnualSummary"></div>
       <!-- MONTHLY CARDS GRID -->
       <div class="sec-card" style="margin-bottom:14px">
-        <div class="sec-hdr"><div class="sec-title">Meses</div><div style="font-size:11px;color:var(--text3)">Clique nos campos para editar reserva e rendimento</div></div>
+        <div class="sec-hdr">
+          <div class="sec-title">Meses</div>
+          <div style="font-size:11px;color:var(--text3)">Clique nos campos para editar reserva e rendimento</div>
+        </div>
+        <!-- MONTH FILTER CHIPS -->
+        <div class="mf-wrap" id="cfMonthFilter"></div>
         <div style="padding:14px 16px">
           <div class="cf-grid" id="cfCardsGrid"></div>
         </div>
@@ -664,8 +676,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div id="sharedConnect"></div>
       <!-- SHARED CONTENT -->
       <div id="sharedContent" style="display:none">
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
           <select class="form-input" id="sharedYear" style="width:auto;padding:6px 12px;font-size:12px" onchange="renderShared()"></select>
+        </div>
+        <!-- MONTH FILTER CHIPS -->
+        <div class="sec-card" style="margin-bottom:14px;overflow:visible">
+          <div class="mf-wrap" id="sharedMonthFilter"></div>
         </div>
         <!-- 3 TABLES STACKED: Me / Partner / Together -->
         <div id="sharedTables"></div>
@@ -1462,6 +1478,9 @@ function setupUI(){
   updateMonthLabel();
   const years=[...new Set(userData.transactions.map(t=>getTxComp(t).year).concat([curYear]))].sort();
   $('cfYear').innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join(''); $('cfYear').value=curYear;
+  // reset month filters when year changes
+  $('cfYear').addEventListener('change',()=>{ cfSelectedMonths=null; });
+  if($('sharedYear')) $('sharedYear').addEventListener('change',()=>{ shSelectedMonths=null; });
   if(userData.patrimonio>0 && $('cfPatrimonio')) $('cfPatrimonio').value=userData.patrimonio;
   populateCatSelects();
 }
@@ -2338,6 +2357,46 @@ function renderBudget(){
 
 // CASHFLOW
 let patriChartI=null;
+// Selected months filter: null = all, Set of month indices (0-11) = filtered
+let cfSelectedMonths=null;   // individual
+let shSelectedMonths=null;  // shared
+
+// Build month filter chips and wire click handlers
+function renderMonthFilterChips(containerId, selectedSet, onChangeFn){
+  const el=$(containerId);
+  if(!el) return;
+  const allActive = selectedSet===null;
+  let html=`<button class="mf-chip mf-all${allActive?' active':''}" onclick="(${onChangeFn.toString()})(null)">Todos</button>`;
+  MONTHS_S.forEach((m,i)=>{
+    const on = !allActive && selectedSet.has(i);
+    html+=`<button class="mf-chip${on?' active':''}" onclick="(${onChangeFn.toString()})(${i})">${m}</button>`;
+  });
+  el.innerHTML=html;
+}
+
+window.cfToggleMonth=function(idx){
+  if(idx===null){ cfSelectedMonths=null; }
+  else {
+    if(cfSelectedMonths===null) cfSelectedMonths=new Set([idx]);
+    else if(cfSelectedMonths.has(idx)){
+      cfSelectedMonths.delete(idx);
+      if(cfSelectedMonths.size===0) cfSelectedMonths=null;
+    } else { cfSelectedMonths.add(idx); }
+  }
+  renderCashflow();
+};
+
+window.shToggleMonth=function(idx){
+  if(idx===null){ shSelectedMonths=null; }
+  else {
+    if(shSelectedMonths===null) shSelectedMonths=new Set([idx]);
+    else if(shSelectedMonths.has(idx)){
+      shSelectedMonths.delete(idx);
+      if(shSelectedMonths.size===0) shSelectedMonths=null;
+    } else { shSelectedMonths.add(idx); }
+  }
+  renderShared();
+};
 window.saveReserve=async function(){
   const v=parseFloat($('cfReserve')?.value)||0;
   userData.reserve=v; await saveSettings(); renderCashflow();
@@ -2427,13 +2486,35 @@ function renderCashflow(){
   }),{inc:0,tot:0,bal:0,reserve:0,rendimento:0,balAfterReserve:0});
   const finalReserva=reservaAcumulada[11];
 
-  // ── Cards de resumo anual ──
+  // ── Chips de filtro de meses ──
+  // Re-render chips (inline onclick refs the global cfToggleMonth)
+  const cfEl=$('cfMonthFilter');
+  if(cfEl){
+    const allActive=cfSelectedMonths===null;
+    cfEl.innerHTML=`<button class="mf-chip mf-all${allActive?' active':''}" onclick="cfToggleMonth(null)">Todos</button>`
+      +MONTHS_S.map((ms,i)=>{
+        const on=!allActive&&cfSelectedMonths.has(i);
+        return `<button class="mf-chip${on?' active':''}" onclick="cfToggleMonth(${i})">${ms}</button>`;
+      }).join('');
+  }
+
+  // ── Cards de resumo — calculados sobre meses visíveis ──
+  const visibleIdx = cfSelectedMonths===null ? monthly.map((_,i)=>i) : [...cfSelectedMonths].sort((a,b)=>a-b);
+  const visMonthly = visibleIdx.map(i=>monthly[i]);
+  const totVisible = visMonthly.reduce((a,m)=>({
+    inc:a.inc+m.inc, tot:a.tot+m.tot, bal:a.bal+m.bal,
+    reserve:a.reserve+(m.hasData||m.reserve>0?m.reserve:0),
+    rendimento:a.rendimento+m.rendimento
+  }),{inc:0,tot:0,bal:0,reserve:0,rendimento:0});
+  // Reserva final = último mês visível
+  const finalReservaVisible = reservaAcumulada[visibleIdx[visibleIdx.length-1]??11];
+
   const sumCards=[
-    {lbl:'Receitas',val:totAnual.inc,cls:'pos'},
-    {lbl:'Despesas',val:-totAnual.tot,cls:'neg'},
-    {lbl:'Saldo Bruto',val:totAnual.bal,cls:totAnual.bal>=0?'pos':'neg'},
-    {lbl:'Total Reservado',val:totAnual.reserve,cls:'',color:'var(--yellow)'},
-    {lbl:'Reserva Final',val:finalReserva,cls:'',color:'var(--accent5)'},
+    {lbl:'Receitas',val:totVisible.inc,cls:'pos'},
+    {lbl:'Despesas',val:-totVisible.tot,cls:'neg'},
+    {lbl:'Saldo Bruto',val:totVisible.bal,cls:totVisible.bal>=0?'pos':'neg'},
+    {lbl:'Total Reservado',val:totVisible.reserve,cls:'',color:'var(--accent5)'},
+    {lbl:'Reserva Final',val:finalReservaVisible,cls:'',color:'var(--accent5)'},
   ];
   $('cfAnnualSummary').innerHTML=sumCards.map(s=>`
     <div class="cf-sum-card">
@@ -2441,8 +2522,9 @@ function renderCashflow(){
       <div class="cf-sum-val ${s.cls}" style="${s.color?`color:${s.color}`:''}">${fmtBRL(Math.abs(s.val))}</div>
     </div>`).join('');
 
-  // ── Cards mensais ──
-  $('cfCardsGrid').innerHTML=monthly.map((m,i)=>{
+  // ── Cards mensais — só meses selecionados ──
+  $('cfCardsGrid').innerHTML=visibleIdx.map(i=>{
+    const m=monthly[i];
     const reservaAcc=reservaAcumulada[i];
     const prevReserva=i===0?reservaInicial:reservaAcumulada[i-1];
     const pctRend=prevReserva>0&&m.rendimento>0?(m.rendimento/prevReserva*100).toFixed(2):null;
@@ -2809,22 +2891,32 @@ async function renderShared(status){
         ? `<img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
         : `<span style="font-size:15px;font-weight:700;color:#fff">${label.charAt(0).toUpperCase()}</span>`;
     const hasRend = d.totRend > 0;
+
+    // Filtrar meses visíveis
+    const visIdx = shSelectedMonths===null ? d.monthly.map((_,i)=>i) : [...shSelectedMonths].sort((a,b)=>a-b);
+    const visMon = visIdx.map(i=>d.monthly[i]).filter(Boolean);
+
+    // Totais sobre meses visíveis
+    const totVis={inc:0,exp:0,bal:0,res:0,rend:0};
+    visMon.forEach(m=>{totVis.inc+=m.inc;totVis.exp+=m.exp;totVis.bal+=m.bal;totVis.res+=m.reserve||0;totVis.rend+=m.rendimento||0;});
+    const finalPatVis = reservaAcc[visIdx[visIdx.length-1]??11]??d.finalPat;
+
     const sumItems = [
-      {lbl:'Receitas', val:d.totInc, color:'var(--accent)'},
-      {lbl:'Despesas', val:-d.totExp, color:'var(--red)'},
-      {lbl:'Saldo', val:d.totBal, color:d.totBal>=0?'var(--accent)':'var(--red)'},
-      ...(hasReserve?[{lbl:'Reservado', val:-d.totRes, color:'var(--yellow)'}]:[]),
-      ...(hasRend?[{lbl:'Rendimentos', val:d.totRend, color:'var(--accent)'}]:[]),
-      {lbl:'Reserva Final', val:d.finalPat, color:accentColor},
+      {lbl:'Receitas', val:totVis.inc, color:'var(--accent)'},
+      {lbl:'Despesas', val:-totVis.exp, color:'var(--red)'},
+      {lbl:'Saldo', val:totVis.bal, color:totVis.bal>=0?'var(--accent)':'var(--red)'},
+      ...(hasReserve?[{lbl:'Reservado', val:-totVis.res, color:'var(--yellow)'}]:[]),
+      ...(hasRend?[{lbl:'Rendimentos', val:totVis.rend, color:'var(--accent)'}]:[]),
+      {lbl:'Reserva Final', val:finalPatVis, color:accentColor},
     ];
-    const cards = MONTHS_S.map((ms,i)=>{
+    const cards = visIdx.map(i=>{
       const m = d.monthly[i];
       if(!m) return '';
       const hasData = m.inc>0||m.exp>0;
       const balColor = !hasData?'var(--text3)':m.bal>=0?'var(--accent)':'var(--red)';
       const cardCls = !hasData?'cf-empty':m.bal<0?'cf-negative':'cf-positive';
       return `<div class="cf-month-card ${cardCls}">
-        <div class="cf-month-lbl">${ms}</div>
+        <div class="cf-month-lbl">${MONTHS_S[i]}</div>
         <div class="cf-month-row"><span class="cf-month-row-lbl">Receita</span><span style="color:var(--accent);font-weight:600;font-size:12px">${m.inc?fmtBRL(m.inc):'—'}</span></div>
         <div class="cf-month-row"><span class="cf-month-row-lbl">Despesas</span><span style="color:var(--red);font-size:12px">${m.exp?fmtBRL(-m.exp):'—'}</span></div>
         <div class="cf-month-bal"><span style="font-size:10px;color:var(--text3)">Saldo</span><span style="color:${balColor}">${hasData?fmtBRL(m.bal):'—'}</span></div>
@@ -2851,6 +2943,18 @@ async function renderShared(status){
       </div>
       <div style="padding:14px 16px"><div class="cf-grid">${cards}</div></div>
     </div>`;
+  }
+
+  // Render shared month filter chips (shared across all 3 tables)
+  const shEl=$('sharedMonthFilter');
+  if(shEl){
+    const allActive=shSelectedMonths===null;
+    shEl.innerHTML=`<span style="font-size:10.5px;color:var(--text3);align-self:center;margin-right:4px">Filtrar:</span>`
+      +`<button class="mf-chip mf-all${allActive?' active':''}" onclick="shToggleMonth(null)">Todos</button>`
+      +MONTHS_S.map((ms,i)=>{
+        const on=!allActive&&shSelectedMonths.has(i);
+        return `<button class="mf-chip${on?' active':''}" onclick="shToggleMonth(${i})">${ms}</button>`;
+      }).join('');
   }
 
   $('sharedTables').innerHTML=
