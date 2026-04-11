@@ -363,6 +363,18 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .mf-chip.active{background:var(--accent5);border-color:var(--accent5);color:#fff;font-weight:600}
 .mf-chip.mf-all{background:var(--surface3);border-color:var(--border2);color:var(--text2)}
 .mf-chip.mf-all.active{background:var(--accent);border-color:var(--accent);color:#0a0c10}
+/* DRE EXPANDÍVEL */
+.dre-section{margin-top:6px;border-top:1px solid rgba(255,255,255,.06);padding-top:6px}
+.dre-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;padding:3px 0;color:var(--text3);font-size:10px;font-family:'DM Sans',sans-serif;transition:color .15s;user-select:none}
+.dre-btn:hover{color:var(--accent)}
+.dre-btn .dre-ico{font-size:9px;transition:transform .2s}
+.dre-btn.open .dre-ico{transform:rotate(90deg)}
+.dre-body{display:none;padding:6px 0 2px}
+.dre-body.open{display:block}
+.dre-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;font-size:10px}
+.dre-row-lbl{color:var(--text3)}
+.dre-row-val{font-size:10px;font-weight:600}
+.dre-separator{border-top:1px dashed rgba(255,255,255,.1);margin:4px 0;padding-top:4px;display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:700}
 </style>
 </head>
 <body>
@@ -624,13 +636,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="page" id="page-cashflow">
       <div class="page-hdr">
         <div><div class="page-title">Fluxo de Caixa</div><div class="page-sub">Entradas, saídas e evolução do patrimônio</div></div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid rgba(167,139,250,.3);border-radius:10px;padding:6px 12px">
-            <span style="font-size:11px;color:var(--text3);white-space:nowrap">💰 Reserva Inicial</span>
-            <input type="number" id="cfPatrimonio" placeholder="0,00" step="0.01" min="0" oninput="savePatrimonio()" style="background:transparent;border:none;outline:none;color:var(--accent5);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;width:110px">
-          </div>
-          <select class="form-input" id="cfYear" style="width:auto;padding:6px 12px;font-size:12px" onchange="renderCashflow()"></select>
-        </div>
+        <select class="form-input" id="cfYear" style="width:auto;padding:6px 12px;font-size:12px" onchange="renderCashflow()"></select>
       </div>
       <div class="charts2" style="grid-template-columns:1fr">
         <div class="chart-card"><div class="chart-title">Receitas vs Despesas</div><div class="chart-wrap" style="height:220px"><canvas id="flowChart"></canvas></div></div>
@@ -644,7 +650,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="sec-card" style="margin-bottom:14px">
         <div class="sec-hdr">
           <div class="sec-title">Meses</div>
-          <div style="font-size:11px;color:var(--text3)">Clique nos campos para editar reserva e rendimento</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid rgba(167,139,250,.3);border-radius:8px;padding:4px 10px">
+              <span style="font-size:10.5px;color:var(--text3);white-space:nowrap">💰 Reserva Inicial</span>
+              <input type="number" id="cfPatrimonio" placeholder="0,00" step="0.01" min="0" oninput="savePatrimonio()" style="background:transparent;border:none;outline:none;color:var(--accent5);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;width:90px;text-align:right">
+            </div>
+            <div style="font-size:11px;color:var(--text3)">Clique nos campos para editar reserva e rendimento</div>
+          </div>
         </div>
         <!-- MONTH FILTER CHIPS -->
         <div class="mf-wrap" id="cfMonthFilter"></div>
@@ -1326,6 +1338,13 @@ function filterDashByType(type){
 const MONTHS   = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MONTHS_S = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
+// ── Categorias DRE (globais para uso em todos os cálculos) ──
+const DRE_DEDUCOES   = ['INSS','IRRF','Vale Transporte'];
+const DRE_BENEFICIOS = ['13° Salário','Bônus','Férias','Extras','Caixa do Mês','Restituição IR'];
+
+// Receita "real" = income excluindo as deduções DRE (INSS/IRRF/VT somam mas reduzem a renda)
+const isIncReal = t => t.type==='income' && !DRE_DEDUCOES.includes(t.category);
+
 const $   = id => document.getElementById(id);
 const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
 const fmtDate= s => { try{ const[y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }catch{ return s; } };
@@ -1351,9 +1370,18 @@ const DEFAULT_CATS=[
   {name:'Reembolso',icon:'↩️',color:'#34d399',type:'expense'},
   {name:'Outros',icon:'📦',color:'#545e78',type:'expense'},
   {name:'Classificar',icon:'🏷️',color:'#94a3b8',type:'expense'},
-  {name:'Salário',icon:'💼',color:'#5eead4',type:'income'},
-  {name:'Benefícios',icon:'⭐',color:'#60a5fa',type:'income'},
   {name:'Freelance',icon:'🖥️',color:'#a78bfa',type:'income'},
+  // ── DRE Salário ──
+  {name:'Salário Bruto',icon:'💼',color:'#1D9E75',type:'income',dreBase:true},
+  {name:'INSS',icon:'🔻',color:'#f87171',type:'income',dreDeducao:true},
+  {name:'IRRF',icon:'🔻',color:'#fb923c',type:'income',dreDeducao:true},
+  {name:'Vale Transporte',icon:'🔻',color:'#fbbf24',type:'income',dreDeducao:true},
+  {name:'13° Salário',icon:'🎁',color:'#60a5fa',type:'income',dreBeneficio:true},
+  {name:'Bônus',icon:'⭐',color:'#a78bfa',type:'income',dreBeneficio:true},
+  {name:'Férias',icon:'🏖️',color:'#67e8f9',type:'income',dreBeneficio:true},
+  {name:'Extras',icon:'➕',color:'#86efac',type:'income',dreBeneficio:true},
+  {name:'Caixa do Mês',icon:'💰',color:'#5eead4',type:'income',dreBeneficio:true},
+  {name:'Restituição IR',icon:'💸',color:'#34d399',type:'income',dreBeneficio:true},
 ];
 const PALETTE=['#f472b6','#60a5fa','#f87171','#5eead4','#fb923c','#a78bfa','#fbbf24','#c084fc','#86efac','#67e8f9','#f9a8d4','#34d399','#94a3b8','#545e78','#f43f5e','#10b981'];
 
@@ -1792,7 +1820,7 @@ function renderRecentList(){
 // DASHBOARD
 function renderDashboard(){
   const txs=getMonthTx();
-  const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+  const inc=txs.filter(isIncReal).reduce((s,t)=>s+t.value,0);
   const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
   const card=txs.filter(t=>t.type==='expense'&&t.payment==='card').reduce((s,t)=>s+t.value,0);
   const inst=txs.filter(t=>t.installment&&t.type==='expense').reduce((s,t)=>s+t.value,0);
@@ -1800,7 +1828,7 @@ function renderDashboard(){
   const variable=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
   const bal=inc-exp;
   $('dInc').textContent=fmtBRL(inc); $('dExp').textContent=fmtBRL(exp);
-  $('dIncCt').textContent=`${txs.filter(t=>t.type==='income').length} lançamentos`;
+  $('dIncCt').textContent=`${txs.filter(isIncReal).length} lançamentos`;
   $('dExpCt').textContent=`${txs.filter(t=>t.type==='expense').length} lançamentos`;
   const bEl=$('dBal'); bEl.textContent=fmtBRL(bal); bEl.className='card-val '+(bal>=0?'pos':'neg');
   $('dCard').textContent=fmtBRL(card); $('dCardCt').textContent=`${txs.filter(t=>t.type==='expense'&&t.payment==='card').length} compras`;
@@ -1808,9 +1836,9 @@ function renderDashboard(){
   $('dFixed').textContent=fmtBRL(fixed); $('dVar').textContent=fmtBRL(variable);
 
   // Annual averages for each card
-  const avgInc =calcAnnualAvg(t=>t.type==='income');
+  const avgInc =calcAnnualAvg(isIncReal);
   const avgExp =calcAnnualAvg(t=>t.type==='expense');
-  const avgBal =calcAnnualAvg(t=>t.type==='income') - calcAnnualAvg(t=>t.type==='expense');
+  const avgBal =calcAnnualAvg(isIncReal) - calcAnnualAvg(t=>t.type==='expense');
   const avgCard=calcAnnualAvg(t=>t.type==='expense'&&t.payment==='card');
   const avgInst=calcAnnualAvg(t=>t.installment&&t.type==='expense');
   const avgFix =calcAnnualAvg(t=>t.type==='expense'&&t.expenseType==='fixed');
@@ -2450,7 +2478,9 @@ function renderCashflow(){
   const monthly=MONTHS_S.map((_,m)=>{
     const manualTxs=userData.transactions.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
     const txs=[...manualTxs, ...getSubscriptionTxs(year, m)];
-    const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+    const incTxs=txs.filter(t=>t.type==='income');
+    // Receita = income excluindo deduções DRE (INSS/IRRF/VT não somam na receita total)
+    const inc=incTxs.filter(t=>!DRE_DEDUCOES.includes(t.category)).reduce((s,t)=>s+t.value,0);
     const fi=txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
     const va=txs.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
     const tot=fi+va; const bal=inc-tot;
@@ -2458,7 +2488,20 @@ function renderCashflow(){
     const rendimento=getMonthRendimento(year,m);
     const hasData=inc>0||tot>0;
     const balAfterReserve=hasData&&reserve>0?bal-reserve:bal;
-    return{inc,fi,va,tot,bal,reserve,rendimento,balAfterReserve,hasData};
+
+    // ── DRE ──
+    const salBruto=incTxs.filter(t=>t.category==='Salário Bruto').reduce((s,t)=>s+t.value,0);
+    const deducoes={};
+    DRE_DEDUCOES.forEach(cat=>{ deducoes[cat]=incTxs.filter(t=>t.category===cat).reduce((s,t)=>s+t.value,0); });
+    const totalDeducoes=Object.values(deducoes).reduce((s,v)=>s+v,0);
+    const salLiq=salBruto-totalDeducoes;
+    const beneficios={};
+    DRE_BENEFICIOS.forEach(cat=>{ beneficios[cat]=incTxs.filter(t=>t.category===cat).reduce((s,t)=>s+t.value,0); });
+    const totalBenef=Object.values(beneficios).reduce((s,v)=>s+v,0);
+    const hasDRE=salBruto>0||totalDeducoes>0||totalBenef>0;
+
+    return{inc,fi,va,tot,bal,reserve,rendimento,balAfterReserve,hasData,
+      dre:{salBruto,deducoes,totalDeducoes,salLiq,beneficios,totalBenef,hasDRE}};
   });
 
   // Reserva Acumulada = reservaInicial + cumsum(quanto_vou_reservar + rendimento_cdi)
@@ -2531,6 +2574,47 @@ function renderCashflow(){
     const balColor=!m.hasData?'var(--text3)':m.bal>0?'var(--accent)':'var(--red)';
     const liquidColor=!m.hasData?'var(--text3)':m.balAfterReserve>0?'var(--accent)':'var(--red)';
     const cardCls=!m.hasData?'cf-empty':m.bal<0?'cf-negative':'cf-positive';
+    const d=m.dre;
+    const dreId=`dre_${i}`;
+
+    // DRE section — só renderiza se houver dados
+    const dreSection = d.hasDRE ? `
+      <div class="dre-section">
+        <button class="dre-btn" id="${dreId}_btn" onclick="toggleDRE('${dreId}')">
+          <span>📊 DRE Salário</span>
+          <span class="dre-ico">▶</span>
+        </button>
+        <div class="dre-body" id="${dreId}">
+          <div class="dre-row">
+            <span class="dre-row-lbl">(+) Salário Bruto</span>
+            <span class="dre-row-val" style="color:var(--accent)">${d.salBruto?fmtBRL(d.salBruto):'—'}</span>
+          </div>
+          ${Object.entries(d.deducoes).filter(([,v])=>v>0).map(([cat,val])=>`
+          <div class="dre-row">
+            <span class="dre-row-lbl">(-) ${cat}</span>
+            <span class="dre-row-val" style="color:var(--red)">-${fmtBRL(val)}</span>
+          </div>`).join('')}
+          <div class="dre-separator">
+            <span style="color:var(--text2)">= Salário Líquido</span>
+            <span style="color:var(--accent)">${fmtBRL(d.salLiq)}</span>
+          </div>
+          ${d.totalBenef>0?`
+          <div class="dre-row" style="margin-top:2px">
+            <span class="dre-row-lbl">(+) Benefícios</span>
+            <span class="dre-row-val" style="color:var(--accent4)">${fmtBRL(d.totalBenef)}</span>
+          </div>
+          ${Object.entries(d.beneficios).filter(([,v])=>v>0).map(([cat,val])=>`
+          <div class="dre-row" style="padding-left:10px">
+            <span class="dre-row-lbl">↳ ${cat}</span>
+            <span class="dre-row-val" style="color:var(--accent4)">${fmtBRL(val)}</span>
+          </div>`).join('')}
+          <div class="dre-separator">
+            <span style="color:var(--text2)">= Sal. Pós Benef.</span>
+            <span style="color:var(--accent);font-size:11px">${fmtBRL(d.salLiq+d.totalBenef)}</span>
+          </div>`:''}
+        </div>
+      </div>` : '';
+
     return `<div class="cf-month-card ${cardCls}">
       <div class="cf-month-lbl">${MONTHS_S[i]}</div>
       <div class="cf-month-row">
@@ -2545,6 +2629,7 @@ function renderCashflow(){
         <span style="font-size:10px;color:var(--text3)">Saldo</span>
         <span style="color:${balColor}">${m.hasData?fmtBRL(m.bal):'—'}</span>
       </div>
+      ${dreSection}
       <div class="cf-reserva">
         <div class="cf-reserva-lbl">💰 Quanto Reservar</div>
         <input type="number" step="0.01" min="0" value="${m.reserve||''}" placeholder="0,00"
@@ -2594,6 +2679,13 @@ function renderCashflow(){
 }
 
 // SIDEBAR MOBILE TOGGLE
+window.toggleDRE=function(id){
+  const body=$(id), btn=$(id+'_btn');
+  if(!body) return;
+  const open=body.classList.toggle('open');
+  if(btn) btn.classList.toggle('open', open);
+};
+
 window.toggleSidebar=function(){ $('sidebar').classList.toggle('open'); $('sideOverlay').classList.toggle('show'); };
 window.closeSidebar=function(){ $('sidebar').classList.remove('open'); $('sideOverlay').classList.remove('show'); };
 
@@ -2836,7 +2928,7 @@ async function renderShared(status){
       const mt=txs.filter(t=>{ const c=getTxComp(t); return c.month===m&&c.year===year; });
       const subTxs=getSubTxsFor(subs||[], year, m);
       const all=[...mt,...subTxs];
-      const inc=all.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+      const inc=all.filter(isIncReal).reduce((s,t)=>s+t.value,0);
       const fi=all.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
       const va=all.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
       const exp=fi+va; const bal=inc-exp;
@@ -3647,7 +3739,7 @@ function buildInsightsPayload(){
   const allTxs = userData.transactions;
   const fmtM = (y,m) => `${MONTHS[m]} ${y}`;
 
-  const inc  = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+  const inc  = txs.filter(isIncReal).reduce((s,t)=>s+t.value,0);
   const exp  = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
   const fixed = txs.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
 
@@ -3669,7 +3761,7 @@ function buildInsightsPayload(){
   for(let i=1;i<=5;i++){
     let m=curMonth-i, y=curYear; if(m<0){m+=12;y--;}
     const mt=[...allTxs.filter(t=>{const c=getTxComp(t);return c.month===m&&c.year===y;}),...getSubscriptionTxs(y,m)];
-    const mI=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+    const mI=mt.filter(isIncReal).reduce((s,t)=>s+t.value,0);
     const mE=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
     const mF=mt.filter(t=>t.type==='expense'&&t.expenseType==='fixed').reduce((s,t)=>s+t.value,0);
     const mV=mt.filter(t=>t.type==='expense'&&t.expenseType==='variable').reduce((s,t)=>s+t.value,0);
@@ -3844,7 +3936,7 @@ window.refreshCashflowInsights = async function(){
     const allTxs = userData.transactions;
     const months = MONTHS_S.map((_,m)=>{
       const txs=[...allTxs.filter(t=>{const c=getTxComp(t);return c.month===m&&c.year===year;}),...getSubscriptionTxs(year,m)];
-      const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+      const inc=txs.filter(isIncReal).reduce((s,t)=>s+t.value,0);
       const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
       const mc={};
       txs.filter(t=>t.type==='expense').forEach(t=>{mc[t.category]=(mc[t.category]||0)+t.value;});
@@ -3883,7 +3975,7 @@ window.refreshSharedInsights = async function(){
     const allTxs=userData.transactions;
     const myMonths=MONTHS_S.map((_,m)=>{
       const txs=[...allTxs.filter(t=>{const c=getTxComp(t);return c.month===m&&c.year===year;}),...getSubscriptionTxs(year,m)];
-      const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.value,0);
+      const inc=txs.filter(isIncReal).reduce((s,t)=>s+t.value,0);
       const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.value,0);
       return {m:MONTHS_S[m],i:+inc.toFixed(0),e:+exp.toFixed(0),b:+(inc-exp).toFixed(0)};
     }).filter(m=>m.i>0||m.e>0);
