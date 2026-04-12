@@ -2594,50 +2594,103 @@ function renderCashflow(){
     const reservaAcc=reservaAcumulada[i];
     const prevReserva=i===0?reservaInicial:reservaAcumulada[i-1];
     const pctRend=prevReserva>0&&m.rendimento>0?(m.rendimento/prevReserva*100).toFixed(2):null;
-    const balColor=!m.hasData?'var(--text3)':m.bal>0?'var(--accent)':'var(--red)';
     const liquidColor=!m.hasData?'var(--text3)':m.balAfterReserve>0?'var(--accent)':'var(--red)';
-    const cardCls=!m.hasData?'cf-empty':m.bal<0?'cf-negative':'cf-positive';
     const d=m.dre;
     const dreId=`dre_${i}`;
 
-    // DRE section — só renderiza se houver dados
-    const dreSection = d.hasDRE ? `
-      <div class="dre-section">
-        <button class="dre-btn" id="${dreId}_btn" onclick="toggleDRE('${dreId}')">
-          <span>📊 DRE Salário</span>
-          <span class="dre-ico">▶</span>
+    // Saldo real = receita disponível (salLiq+benef ou inc) - despesas
+    const incDisp = d.hasDRE ? d.salLiq+d.totalBenef : m.inc;
+    const saldoFinal = incDisp - m.tot;
+    const saldoColor = !m.hasData?'var(--text3)':saldoFinal>=0?'var(--accent)':'var(--red)';
+    const cardCls=!m.hasData?'cf-empty':saldoFinal<0?'cf-negative':'cf-positive';
+
+    if(d.hasDRE){
+      // ── Card com DRE: fluxo completo sem Receita/Saldo no topo ──
+      return `<div class="cf-month-card ${cardCls}">
+        <div class="cf-month-lbl">${MONTHS_S[i]}</div>
+
+        <!-- DRE sempre visível -->
+        <div class="dre-row" style="margin-bottom:2px">
+          <span class="dre-row-lbl">(+) Salário Bruto</span>
+          <span class="dre-row-val" style="color:var(--accent)">${d.salBruto?fmtBRL(d.salBruto):'—'}</span>
+        </div>
+        <button class="dre-btn" id="${dreId}_btn" onclick="toggleDRE('${dreId}')" style="margin-bottom:2px">
+          <span style="font-size:9.5px;color:var(--text3)">ver deduções</span>
+          <span class="dre-ico" style="font-size:8px">▶</span>
         </button>
         <div class="dre-body" id="${dreId}">
-          <div class="dre-row">
-            <span class="dre-row-lbl">(+) Salário Bruto</span>
-            <span class="dre-row-val" style="color:var(--accent)">${d.salBruto?fmtBRL(d.salBruto):'—'}</span>
-          </div>
           ${Object.entries(d.deducoes).filter(([,v])=>v>0).map(([cat,val])=>`
           <div class="dre-row">
             <span class="dre-row-lbl">(-) ${cat}</span>
             <span class="dre-row-val" style="color:var(--red)">-${fmtBRL(val)}</span>
           </div>`).join('')}
-          <div class="dre-separator">
-            <span style="color:var(--text2)">= Salário Líquido</span>
-            <span style="color:var(--accent)">${fmtBRL(d.salLiq)}</span>
-          </div>
-          ${d.totalBenef>0?`
-          <div class="dre-row" style="margin-top:2px">
-            <span class="dre-row-lbl">(+) Benefícios</span>
-            <span class="dre-row-val" style="color:var(--accent4)">${fmtBRL(d.totalBenef)}</span>
-          </div>
+        </div>
+        <div class="dre-separator">
+          <span style="color:var(--text2);font-size:11px">= Sal. Líquido</span>
+          <span style="color:var(--accent);font-size:12px">${fmtBRL(d.salLiq)}</span>
+        </div>
+
+        ${d.totalBenef>0?`
+        <div class="dre-row" style="margin-top:3px">
+          <span class="dre-row-lbl">(+) Benefícios</span>
+          <span class="dre-row-val" style="color:var(--accent4)">${fmtBRL(d.totalBenef)}</span>
+        </div>
+        <button class="dre-btn" id="${dreId}b_btn" onclick="toggleDRE('${dreId}b')" style="margin-bottom:2px">
+          <span style="font-size:9.5px;color:var(--text3)">ver benefícios</span>
+          <span class="dre-ico" style="font-size:8px">▶</span>
+        </button>
+        <div class="dre-body" id="${dreId}b">
           ${Object.entries(d.beneficios).filter(([,v])=>v>0).map(([cat,val])=>`
-          <div class="dre-row" style="padding-left:10px">
+          <div class="dre-row" style="padding-left:8px">
             <span class="dre-row-lbl">↳ ${cat}</span>
             <span class="dre-row-val" style="color:var(--accent4)">${fmtBRL(val)}</span>
           </div>`).join('')}
-          <div class="dre-separator">
-            <span style="color:var(--text2)">= Sal. Pós Benef.</span>
-            <span style="color:var(--accent);font-size:11px">${fmtBRL(d.salLiq+d.totalBenef)}</span>
-          </div>`:''}
         </div>
-      </div>` : '';
+        <div class="dre-separator">
+          <span style="color:var(--text2);font-size:11px">= Sal. Pós Benef.</span>
+          <span style="color:var(--accent);font-size:12px">${fmtBRL(d.salLiq+d.totalBenef)}</span>
+        </div>`:''}
 
+        <!-- Despesas abaixo do salário disponível -->
+        ${m.tot>0?`<div class="dre-row" style="margin-top:4px">
+          <span class="dre-row-lbl">(-) Despesas</span>
+          <span class="dre-row-val" style="color:var(--red)">-${fmtBRL(m.tot)}</span>
+        </div>`:''}
+
+        <!-- Saldo final -->
+        <div class="cf-month-bal" style="margin-top:6px">
+          <span style="font-size:10px;color:var(--text3)">= Saldo</span>
+          <span style="color:${saldoColor}">${m.hasData?fmtBRL(saldoFinal):'—'}</span>
+        </div>
+
+        <div class="cf-reserva">
+          <div class="cf-reserva-lbl">💰 Quanto Reservar</div>
+          <input type="number" step="0.01" min="0" value="${m.reserve||''}" placeholder="0,00"
+            onchange="saveMonthReserve(${i},this)"
+            class="cf-month-input inp-yellow" style="color:var(--yellow);border-color:rgba(251,191,36,.3)">
+          <div style="margin-top:6px">
+            <div class="cf-reserva-lbl" style="color:var(--accent)">📈 Rendimento CDI</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="number" step="0.01" min="0" value="${m.rendimento||''}" placeholder="0,00"
+                onchange="saveMonthRendimento(${i},this)"
+                class="cf-month-input" style="color:var(--accent);border-color:rgba(94,234,212,.25)">
+              ${pctRend?`<span style="font-size:9px;color:var(--accent);opacity:.7">${pctRend}%</span>`:''}
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:6px;border-top:1px solid rgba(167,139,250,.15)">
+            <span style="font-size:10px;color:var(--accent5)">Reserva Acum.</span>
+            <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--accent5)">${fmtBRL(reservaAcc)}</span>
+          </div>
+        </div>
+        ${m.hasData&&m.reserve>0?`<div style="margin-top:6px;font-size:10px;display:flex;justify-content:space-between">
+          <span style="color:var(--text3)">Líquido</span>
+          <span style="color:${liquidColor};font-weight:600">${fmtBRL(m.balAfterReserve)}</span>
+        </div>`:''}
+      </div>`;
+    }
+
+    // ── Card simples (sem DRE): Receita → Despesas → Saldo ──
+    const balColor=!m.hasData?'var(--text3)':m.bal>=0?'var(--accent)':'var(--red)';
     return `<div class="cf-month-card ${cardCls}">
       <div class="cf-month-lbl">${MONTHS_S[i]}</div>
       <div class="cf-month-row">
@@ -2652,7 +2705,6 @@ function renderCashflow(){
         <span style="font-size:10px;color:var(--text3)">Saldo</span>
         <span style="color:${balColor}">${m.hasData?fmtBRL(m.bal):'—'}</span>
       </div>
-      ${dreSection}
       <div class="cf-reserva">
         <div class="cf-reserva-lbl">💰 Quanto Reservar</div>
         <input type="number" step="0.01" min="0" value="${m.reserve||''}" placeholder="0,00"
