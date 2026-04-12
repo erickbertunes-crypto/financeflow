@@ -1409,6 +1409,29 @@ async function loadUserData(){
   const txSnap=await getDocs(txCol());
   userData.transactions=[];
   txSnap.forEach(d=>userData.transactions.push({id:d.id,...d.data()}));
+
+  // ── Auto-merge: garante que as novas categorias DRE existam ──
+  // Se o usuário tem categorias salvas, injeta as que ainda não existem
+  if(userData.categories && userData.categories.length>0){
+    const newCats=[
+      {name:'Salário Bruto',icon:'💼',color:'#1D9E75',type:'income',dreBase:true},
+      {name:'INSS',icon:'🔻',color:'#f87171',type:'income',dreDeducao:true},
+      {name:'IRRF',icon:'🔻',color:'#fb923c',type:'income',dreDeducao:true},
+      {name:'Vale Transporte',icon:'🔻',color:'#fbbf24',type:'income',dreDeducao:true},
+      {name:'13° Salário',icon:'🎁',color:'#60a5fa',type:'income',dreBeneficio:true},
+      {name:'Bônus',icon:'⭐',color:'#a78bfa',type:'income',dreBeneficio:true},
+      {name:'Férias',icon:'🏖️',color:'#67e8f9',type:'income',dreBeneficio:true},
+      {name:'Extras',icon:'➕',color:'#86efac',type:'income',dreBeneficio:true},
+      {name:'Caixa do Mês',icon:'💰',color:'#5eead4',type:'income',dreBeneficio:true},
+      {name:'Restituição IR',icon:'💸',color:'#34d399',type:'income',dreBeneficio:true},
+    ];
+    const existingNames=new Set(userData.categories.map(c=>c.name));
+    const toAdd=newCats.filter(c=>!existingNames.has(c.name));
+    if(toAdd.length>0){
+      userData.categories=[...userData.categories,...toAdd];
+      await setDoc(userRef(),{categories:userData.categories},{merge:true});
+    }
+  }
 }
 async function saveSettings(){ await setDoc(userRef(),{budgets:userData.budgets,cardLimit:userData.cardLimit,reserve:userData.reserve||0,monthlyReserves:userData.monthlyReserves||{},monthlyRendimentos:userData.monthlyRendimentos||{},patrimonio:userData.patrimonio||0,categories:userData.categories||[],subscriptions:userData.subscriptions||[],photoBase64:userData.photoBase64||''},{merge:true}); }
 async function fsAddTx(tx){ const{id,...data}=tx; const ref=await addDoc(txCol(),{...data,createdAt:serverTimestamp()}); return ref.id; }
