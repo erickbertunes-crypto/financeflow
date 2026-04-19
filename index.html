@@ -72,6 +72,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .month-label{font-size:12.5px;color:var(--text);font-weight:500;flex:1;text-align:center}
 .btn-logout{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11.5px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
 .btn-logout:hover{border-color:var(--red);color:var(--red)}
+.btn-privacy{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11.5px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-privacy:hover{border-color:var(--accent);color:var(--accent)}
+.btn-privacy.active{background:rgba(94,234,212,.1);border-color:var(--accent);color:var(--accent)}
 /* MAIN */
 .main{margin-left:var(--sidebar);flex:1;padding:28px 28px 48px}
 .page{display:none}
@@ -459,6 +462,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="month-label" id="mLabel">—</div>
         <button class="month-btn" onclick="changeMonth(1)">›</button>
       </div>
+      <button class="btn-privacy" id="privacyBtn" onclick="togglePrivacy()">🔓 <span id="privacyLbl">Ocultar valores</span></button>
       <button class="btn-logout" onclick="doLogout()">Sair da conta</button>
     </div>
   </nav>
@@ -1388,7 +1392,19 @@ const DRE_BENEFICIOS = ['13° Salário','Bônus','Férias','Extras','Caixa do M�
 const isIncReal = t => t.type==='income' && !DRE_DEDUCOES.includes(t.category);
 
 const $   = id => document.getElementById(id);
-const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+const _fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+let privacyMode = false;
+const fmtBRL = v => privacyMode ? 'R$ ••••' : _fmtBRL(v);
+
+window.togglePrivacy = function(){
+  privacyMode = !privacyMode;
+  const btn = $('privacyBtn');
+  const lbl = $('privacyLbl');
+  if(btn) btn.classList.toggle('active', privacyMode);
+  if(btn) btn.firstChild.textContent = privacyMode ? '🔒 ' : '🔓 ';
+  if(lbl) lbl.textContent = privacyMode ? 'Mostrar valores' : 'Ocultar valores';
+  renderAll();
+};
 const fmtDate= s => { try{ const[y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }catch{ return s; } };
 const genId  = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
