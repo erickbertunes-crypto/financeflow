@@ -166,7 +166,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .prog-bg{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
 .prog-fill{height:100%;border-radius:3px;transition:width .5s ease}
 /* FILTER */
-.filter-bar{display:flex;gap:6px;padding:11px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center}
+.sort-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.sort-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sort-btn.asc .sort-ico::after{content:'↑'}
+.sort-btn.desc .sort-ico::after{content:'↓'}
+.sort-ico::after{content:'↕';font-size:10px}
 .filter-btn{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
 .filter-btn.active{background:var(--accent);border-color:var(--accent);color:#0a0c10;font-weight:600}
 .search-wrap{position:relative}
@@ -555,6 +559,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
           <button class="filter-btn" id="tf-card" onclick="setTxFilter('card',this)">Cartão</button>
           <button class="filter-btn" id="tf-pix" onclick="setTxFilter('pix',this)">Pix</button>
           <button class="filter-btn" id="tf-installment" onclick="setTxFilter('installment',this)">Parcelado</button>
+          <button class="sort-btn desc" id="txSortBtn" onclick="toggleSort('tx')" style="margin-left:auto">
+            <span>Data</span><span class="sort-ico"></span>
+          </button>
         </div>
         <!-- STATUS + CATEGORY -->
         <div style="padding:0 18px 12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
@@ -717,6 +724,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
           <button class="filter-btn active" onclick="setPixFilter('all',this)">Todos</button>
           <button class="filter-btn" onclick="setPixFilter('out',this)">⬆️ Enviados</button>
           <button class="filter-btn" onclick="setPixFilter('in',this)">⬇️ Recebidos</button>
+          <button class="sort-btn desc" id="pixSortBtn" onclick="toggleSort('pix')" style="margin-left:auto">
+            <span>Data</span><span class="sort-ico"></span>
+          </button>
         </div>
         <div class="tx-list" id="pixList" style="max-height:600px"></div>
       </div>
@@ -857,7 +867,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         </div>
       </div>
       <div class="sec-card">
-        <div class="sec-hdr"><div class="sec-title">Compras no Cartão este Mês</div></div>
+        <div class="sec-hdr">
+          <div class="sec-title">Compras no Cartão este Mês</div>
+          <button class="sort-btn desc" id="ccSortBtn" onclick="toggleSort('cc')">
+            <span>Data</span><span class="sort-ico"></span>
+          </button>
+        </div>
         <div class="tx-list" id="ccList" style="max-height:500px"></div>
       </div>
     </div>
@@ -1207,6 +1222,33 @@ let txModalMode = 'new';
 let editingId   = null;
 let modalTxType = 'expense';
 let txFilterState = 'all';
+// Sort states: 'desc' = mais recente primeiro (padrão), 'asc' = mais antigo primeiro
+let txSortOrder='desc', pixSortOrder='desc', ccSortOrder='desc';
+
+window.toggleSort=function(page){
+  if(page==='tx'){
+    txSortOrder=txSortOrder==='desc'?'asc':'desc';
+    const btn=$('txSortBtn');
+    if(btn){ btn.className='sort-btn '+txSortOrder; }
+    renderTxPage();
+  } else if(page==='pix'){
+    pixSortOrder=pixSortOrder==='desc'?'asc':'desc';
+    const btn=$('pixSortBtn');
+    if(btn){ btn.className='sort-btn '+pixSortOrder; }
+    renderPixPage();
+  } else if(page==='cc'){
+    ccSortOrder=ccSortOrder==='desc'?'asc':'desc';
+    const btn=$('ccSortBtn');
+    if(btn){ btn.className='sort-btn '+ccSortOrder; }
+    renderCredit();
+  }
+};
+
+function sortByDate(arr, order){
+  return [...arr].sort((a,b)=>order==='asc'
+    ? a.date.localeCompare(b.date)
+    : b.date.localeCompare(a.date));
+}
 let instTabState  = 'active';
 let catChartI=null, typeChartI=null, flowChartI=null;
 let catTabMode='radar', typeTabMode='donut';
@@ -2033,7 +2075,7 @@ function renderTxPage(){
   // NOTE: populateCatFilter() NOT called here — it resets the select value
   const search=($('txSearch')?.value||'').toLowerCase();
   const catF=($('txCatFilter')?.value||'');
-  let txs=getMonthTx().sort((a,b)=>b.date.localeCompare(a.date));
+  let txs=sortByDate(getMonthTx(), txSortOrder);
 
   if(txFilterState==='income') txs=txs.filter(t=>t.type==='income');
   else if(txFilterState==='expense') txs=txs.filter(t=>t.type==='expense');
@@ -2774,7 +2816,7 @@ window.updateCCLimit=async function(){
   $('ccBill').textContent=fmtBRL(total); $('ccLimit').textContent=lim>0?fmtBRL(lim):'—'; $('ccAvail').textContent=lim>0?fmtBRL(Math.max(lim-total,0)):'—';
 };
 function renderCredit(){
-  const txs=getMonthTx().filter(t=>t.payment==='card'&&t.type==='expense').sort((a,b)=>b.date.localeCompare(a.date));
+  const txs=sortByDate(getMonthTx().filter(t=>t.payment==="card"&&t.type==="expense"), ccSortOrder);
   if(!$('ccLimitInput').value&&userData.cardLimit>0) $('ccLimitInput').value=userData.cardLimit;
   updateCCLimit();
   $('ccList').innerHTML=txs.length?txs.map(txItem).join(''):`<div class="empty-st"><div class="empty-ico">💳</div><div class="empty-txt">Nenhuma compra no cartão este mês.</div></div>`;
@@ -3157,7 +3199,7 @@ function renderPixPage(){
   $('pixOutCt').textContent=`${monthSent.length} transações`;
   $('pixInCt').textContent=`${monthRecv.length} transações`;
   // List = pix do mês selecionado, ordenado por data
-  let txs=[...monthTxs].sort((a,b)=>b.date.localeCompare(a.date));
+  let txs=sortByDate(monthTxs, pixSortOrder);
   if(pixFilter==='out') txs=txs.filter(t=>t.type==='expense');
   if(pixFilter==='in') txs=txs.filter(t=>t.type==='income');
   if(search) txs=txs.filter(t=>(t.desc+' '+t.category).toLowerCase().includes(search));
