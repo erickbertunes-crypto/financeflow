@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Feed de Notícias</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1a1d23; --text-muted: #6b7280;
+    --accent: #2563eb; --border: #e5e7eb; --tag-bg: #eef2ff; --tag-text: #3730a3;
+    --danger: #dc2626; --danger-bg: #fef2f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --card: #1e2128; --text: #f0f1f3; --text-muted: #9aa0aa;
+      --accent: #60a5fa; --border: #2c2f36; --tag-bg: #23263a; --tag-text: #a5b4fc;
+      --danger-bg: #2a1a1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .subtitle { color: var(--text-muted); font-size: 0.85rem; margin: 0 0 16px; }
+
+  .refresh-all, .gear-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: 10px; border: none;
+    background: var(--accent); color: white; font-weight: 600;
+    font-size: 0.85rem; cursor: pointer; white-space: nowrap;
+  }
+  .gear-btn { background: var(--tag-bg); color: var(--tag-text); }
+  .refresh-all:disabled { opacity: 0.6; }
+  .header-btns { display: flex; gap: 8px; }
+
+  .settings-panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 16px; display: none;
+  }
+  .settings-panel.open { display: block; }
+  .settings-panel label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 6px; }
+  .settings-panel input {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 0.9rem; margin-bottom: 8px;
+  }
+  .settings-panel .hint { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
+  .settings-panel .hint a { color: var(--accent); }
+  .settings-panel button { padding: 8px 14px; border-radius: 8px; border: none; background: var(--accent); color: white; font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+
+  .tag-input-row { display: flex; gap: 8px; margin: 4px 0 14px; }
+  .tag-input-row input {
+    flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 0.95rem;
+  }
+  .tag-input-row button {
+    padding: 10px 16px; border-radius: 10px; border: none;
+    background: var(--accent); color: white; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+  }
+
+  .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .tag-chip {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--tag-bg);
+    color: var(--tag-text); padding: 6px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 600;
+  }
+  .tag-chip button { background: none; border: none; color: var(--tag-text); cursor: pointer; font-size: 0.9rem; opacity: 0.6; padding: 0; }
+  .tag-chip button:hover { opacity: 1; }
+
+  .status-banner {
+    font-size: 0.78rem; padding: 10px 12px; border-radius: 10px;
+    background: var(--tag-bg); color: var(--tag-text); margin-bottom: 16px; line-height: 1.4;
+  }
+  .status-banner.error { background: var(--danger-bg); color: var(--danger); }
+
+  .section-title {
+    font-size: 1rem; font-weight: 700; margin: 22px 0 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .updated { font-size: 0.72rem; color: var(--text-muted); font-weight: 400; white-space: nowrap; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .card h3 { margin: 0 0 6px; font-size: 0.95rem; line-height: 1.3; }
+  .card p { margin: 0 0 8px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+  .card a { font-size: 0.8rem; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .card a:hover { text-decoration: underline; }
+  .card .src { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.02em; }
+
+  .empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px 10px; }
+  .section-error { font-size: 0.82rem; color: var(--danger); background: var(--danger-bg); padding: 10px 12px; border-radius: 10px; }
+  .spinner-row { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.85rem; padding: 12px 0; }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>📰 Meu Feed</h1>
+    </div>
+    <div class="header-btns">
+      <button class="gear-btn" id="settingsBtn">⚙️</button>
+      <button class="refresh-all" id="refreshAllBtn">🔄 Atualizar</button>
+    </div>
+  </header>
+  <p class="subtitle">Notícias resumidas das tags que você acompanha</p>
+
+  <div class="settings-panel" id="settingsPanel">
+    <label for="claudeKeyInput">Sua chave da API Anthropic</label>
+    <input id="claudeKeyInput" type="text" placeholder="sk-ant-..." />
+    <button id="saveKeyBtn">Salvar</button>
+    <p class="hint">
+      Gere em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+      O app usa a busca na web da própria Claude pra achar e resumir as notícias — sem serviço externo.
+      Custo: ~US$0,01 por busca + tokens, cobrado direto na sua conta (poucos centavos por atualização).
+      Se aparecer erro de "busca não habilitada", ative em Console → Settings.
+      A chave fica salva só neste navegador.
+    </p>
+  </div>
+
+  <div class="tag-input-row">
+    <input id="tagInput" type="text" placeholder="Adicionar tag (ex: Amil)" />
+    <button id="addBtn">Adicionar</button>
+  </div>
+
+  <div class="tag-list" id="tagList"></div>
+  <div id="statusBanner"></div>
+  <div id="feed"></div>
+</div>
+
+<script>
+  const STORAGE_TAGS = "feed_tags_v5";
+  const STORAGE_NEWS = "feed_news_v5";
+  const STORAGE_CLAUDE_KEY = "feed_claude_key_v5";
+
+  function loadTags() {
+    try { const raw = localStorage.getItem(STORAGE_TAGS); if (raw) return JSON.parse(raw); } catch (e) {}
+    return ["Amil", "Rede Américas", "Rede D'Or"];
+  }
+  function saveTags(tags) { try { localStorage.setItem(STORAGE_TAGS, JSON.stringify(tags)); } catch (e) {} }
+  function loadNews() {
+    try { const raw = localStorage.getItem(STORAGE_NEWS); if (raw) return JSON.parse(raw); } catch (e) {}
+    return {};
+  }
+  function saveNews(news) { try { localStorage.setItem(STORAGE_NEWS, JSON.stringify(news)); } catch (e) {} }
+  function loadClaudeKey() { try { return localStorage.getItem(STORAGE_CLAUDE_KEY) || ""; } catch (e) { return ""; } }
+  function saveClaudeKey(key) { try { localStorage.setItem(STORAGE_CLAUDE_KEY, key); } catch (e) {} }
+  function escapeHtml(str) { const d = document.createElement("div"); d.textContent = str; return d.innerHTML; }
+  function todayStr() {
+    const d = new Date();
+    return String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0") + "/" + d.getFullYear();
+  }
+  function hostnameOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return ""; } }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // Tenta ler um array JSON mesmo se vier com texto extra antes/depois, ou em cercas ```json.
+  // Retorna o array, ou null se não achou nada interpretável.
+  function extractJsonArray(text) {
+    if (!text) return null;
+    const attempts = [text.trim()];
+    const stripped = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/, "");
+    attempts.push(stripped);
+    const start = text.indexOf("[");
+    const end = text.lastIndexOf("]");
+    if (start !== -1 && end !== -1 && end > start) attempts.push(text.slice(start, end + 1));
+
+    for (const candidate of attempts) {
+      try {
+        const v = JSON.parse(candidate);
+        if (Array.isArray(v)) return v;
+      } catch (e) { /* tenta a próxima opção */ }
+    }
+    return null;
+  }
+
+  let tags = loadTags();
+  let news = loadNews();
+  let claudeKey = loadClaudeKey();
+  let sectionState = {};
+  let isBusy = false;
+
+  function setBanner(html, isError) {
+    const b = document.getElementById("statusBanner");
+    b.innerHTML = html ? `<div class="status-banner${isError ? ' error' : ''}">${html}</div>` : "";
+  }
+
+  function setUiLocked(locked) {
+    document.getElementById("addBtn").disabled = locked;
+    document.getElementById("tagInput").disabled = locked;
+    document.getElementById("refreshAllBtn").disabled = locked;
+    document.querySelectorAll(".tag-chip button").forEach(b => b.disabled = locked);
+  }
+
+  function render() {
+    const tagList = document.getElementById("tagList");
+    tagList.innerHTML = "";
+    tags.forEach((tag, i) => {
+      const chip = document.createElement("span");
+      chip.className = "tag-chip";
+      chip.innerHTML = `${escapeHtml(tag)} <button data-idx="${i}">✕</button>`;
+      tagList.appendChild(chip);
+    });
+    tagList.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.getAttribute("data-idx"));
+        tags.splice(idx, 1);
+        saveTags(tags);
+        render();
+      });
+    });
+
+    if (!claudeKey) {
+      setBanner('Configure sua chave da Anthropic em <strong>⚙️</strong> pra começar a buscar notícias.', true);
+    } else {
+      setBanner("");
+    }
+
+    const feed = document.getElementById("feed");
+    feed.innerHTML = "";
+
+    if (tags.length === 0) {
+      feed.innerHTML = `<div class="empty">Adicione uma tag acima para começar a ver notícias.</div>`;
+      return;
+    }
+
+    tags.forEach(tag => {
+      const key = tag.trim().toLowerCase();
+      const data = news[key];
+      const state = sectionState[key] || {};
+
+      const title = document.createElement("div");
+      title.className = "section-title";
+      title.innerHTML = `<span>${escapeHtml(tag)}</span>` +
+        (data && data.updated ? `<span class="updated">atualizado ${data.updated}</span>` : "");
+      feed.appendChild(title);
+
+      if (state.loading) {
+        const row = document.createElement("div");
+        row.className = "spinner-row";
+        row.innerHTML = `<span class="spinner"></span> Pesquisando e resumindo...`;
+        feed.appendChild(row);
+        return;
+      }
+
+      if (state.error) {
+        const err = document.createElement("div");
+        err.className = "section-error";
+        err.textContent = state.error;
+        feed.appendChild(err);
+      }
+
+      if (!data || !data.items || data.items.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Ainda sem notícias para esta tag — toque em Atualizar.";
+        feed.appendChild(empty);
+        return;
+      }
+
+      data.items.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          ${item.source ? `<div class="src">${escapeHtml(item.source)}</div>` : ""}
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(item.summary)}</p>
+          <a href="${item.url}" target="_blank" rel="noopener">Ler fonte →</a>
+        `;
+        feed.appendChild(card);
+      });
+    });
+  }
+
+  async function errorCopy(resp) {
+    let msg = "";
+    try { const j = await resp.clone().json(); msg = (j && j.error && j.error.message) || ""; } catch (e) {}
+    if (resp.status === 401) return "Chave da Anthropic inválida. Confira em ⚙️.";
+    if (resp.status === 403) return "Acesso negado — pode ser que a busca na web não esteja habilitada. Ative em console.anthropic.com → Settings.";
+    if (resp.status === 429) return "Limite de uso atingido. Espere um pouco e tente de novo.";
+    if (resp.status === 529) return "Servidores da Anthropic sobrecarregados no momento. Tente de novo em instantes.";
+    if (resp.status === 400 && /web.?search/i.test(msg)) return "A busca na web precisa ser habilitada na sua conta (console.anthropic.com → Settings).";
+    return msg ? `Erro: ${msg}` : `Erro ao buscar (HTTP ${resp.status}).`;
+  }
+
+  async function callWithRetry(fn, maxRetries = 2) {
+    let lastErr;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (e) {
+        lastErr = e;
+        if (!e.retryable || attempt === maxRetries) throw e;
+        await sleep(1500 * (attempt + 1));
+      }
+    }
+    throw lastErr;
+  }
+
+  async function doRefreshTag(tag) {
+    const key = tag.trim().toLowerCase();
+    sectionState[key] = { loading: true };
+    render();
+
+    if (!claudeKey) {
+      sectionState[key] = { loading: false, error: "Configure a chave da Anthropic primeiro (⚙️)." };
+      render();
+      return;
+    }
+
+    const hoje = new Date();
+    const dataHoje = hoje.getFullYear() + "-" + String(hoje.getMonth()+1).padStart(2,"0") + "-" + String(hoje.getDate()).padStart(2,"0");
+
+    const prompt = `Hoje é ${dataHoje}. Pesquise as notícias MAIS RECENTES sobre "${tag}" (empresa/organização do setor de saúde no Brasil).
+Faça buscas focadas nos últimos dias e semanas (use termos como "${tag} notícia hoje", "${tag} esta semana", "${tag} ${hoje.getFullYear()}").
+
+REGRAS DE SELEÇÃO (nesta ordem de prioridade):
+1. RECÊNCIA é o mais importante: priorize o que foi publicado nos últimos 30 dias. Descarte qualquer notícia com mais de ~4 meses, mesmo que pareça relevante.
+2. Deve ser genuinamente sobre essa organização (ignore resultados onde o nome só aparece por coincidência ou como parte de outra palavra, ex: "Amil" dentro de "família").
+3. Escolha até 3, sempre as mais recentes que encontrar.
+
+Para cada uma, escreva um resumo geral de 1 a 2 frases em português (suas próprias palavras) e a data de publicação no formato AAAA-MM-DD (se souber só o mês, use dia 01).
+Ordene da MAIS RECENTE para a mais antiga.
+
+IMPORTANTE: sua resposta final deve conter SOMENTE o array JSON — nada antes ou depois, nem "aqui está". Comece com [ e termine com ].
+Formato: [{"title": "...", "summary": "...", "url": "...", "date": "AAAA-MM-DD"}]
+Se não encontrar nada recente e relevante, responda exatamente: []`;
+
+    let resp;
+    try {
+      resp = await callWithRetry(async () => {
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-api-key": claudeKey,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true"
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 1500,
+            tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 6 }],
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        if (!r.ok && (r.status === 429 || r.status === 529)) {
+          const err = new Error("retryable"); err.retryable = true; err.resp = r; throw err;
+        }
+        return r;
+      });
+    } catch (e) {
+      resp = e.resp;
+      if (!resp) {
+        sectionState[key] = { loading: false, error: "Sem conexão de rede. Tente de novo." };
+        render();
+        return;
+      }
+    }
+
+    if (!resp.ok) {
+      sectionState[key] = { loading: false, error: await errorCopy(resp) };
+      render();
+      return;
+    }
+
+    let data;
+    try { data = await resp.json(); } catch (e) {
+      sectionState[key] = { loading: false, error: "Resposta inesperada da API." };
+      render();
+      return;
+    }
+
+    const textBlocks = (data.content || []).filter(b => b.type === "text");
+    const finalText = textBlocks.map(b => b.text).join("\n");
+
+    const items = extractJsonArray(finalText);
+    if (items === null) {
+      const noResultHint = /n[ãa]o encontr|nenhuma not[íi]cia|sem not[íi]cias relevantes/i.test(finalText);
+      if (noResultHint) {
+        news[key] = { updated: todayStr(), items: [] };
+        saveNews(news);
+        sectionState[key] = { loading: false, error: null };
+      } else {
+        sectionState[key] = { loading: false, error: "Não consegui interpretar o resultado da busca desta vez." };
+      }
+      render();
+      return;
+    }
+
+    // Descarte de segurança: remove notícias claramente antigas (> ~4 meses), caso escapem do filtro do modelo.
+    const limiteAntigo = Date.now() - 130 * 24 * 60 * 60 * 1000;
+    const recentes = items.filter(it => {
+      const d = Date.parse(it.date);
+      if (isNaN(d)) return true; // sem data: mantém, não dá pra afirmar que é antiga
+      return d >= limiteAntigo;
+    });
+
+    // Ordena da mais recente pra mais antiga; datas ausentes/inválidas ficam por último.
+    const withIndex = recentes.map((it, i) => ({ it, i }));
+    withIndex.sort((a, b) => {
+      const da = Date.parse(a.it.date);
+      const db = Date.parse(b.it.date);
+      const va = isNaN(da) ? -Infinity : da;
+      const vb = isNaN(db) ? -Infinity : db;
+      if (vb !== va) return vb - va;
+      return a.i - b.i;
+    });
+    const sortedItems = withIndex.map(x => x.it);
+
+    news[key] = {
+      updated: todayStr(),
+      items: sortedItems.slice(0, 3).map(it => ({
+        title: String(it.title || tag),
+        summary: String(it.summary || ""),
+        url: String(it.url || ""),
+        source: hostnameOf(it.url || "")
+      }))
+    };
+    saveNews(news);
+    sectionState[key] = { loading: false, error: null };
+    render();
+  }
+
+  async function refreshTag(tag) {
+    while (isBusy) { await sleep(150); }
+    isBusy = true;
+    setUiLocked(true);
+    try { await doRefreshTag(tag); } finally { isBusy = false; setUiLocked(false); }
+  }
+
+  async function refreshAll() {
+    while (isBusy) { await sleep(150); }
+    isBusy = true;
+    setUiLocked(true);
+    try {
+      for (let i = 0; i < tags.length; i++) {
+        await doRefreshTag(tags[i]);
+        if (i < tags.length - 1) await sleep(400);
+      }
+    } finally {
+      isBusy = false;
+      setUiLocked(false);
+    }
+  }
+
+  document.getElementById("refreshAllBtn").addEventListener("click", refreshAll);
+
+  document.getElementById("settingsBtn").addEventListener("click", () => {
+    document.getElementById("settingsPanel").classList.toggle("open");
+    document.getElementById("claudeKeyInput").value = claudeKey;
+  });
+  document.getElementById("saveKeyBtn").addEventListener("click", () => {
+    claudeKey = document.getElementById("claudeKeyInput").value.trim();
+    saveClaudeKey(claudeKey);
+    document.getElementById("settingsPanel").classList.remove("open");
+    render();
+  });
+
+  document.getElementById("addBtn").addEventListener("click", () => {
+    const input = document.getElementById("tagInput");
+    const val = input.value.trim();
+    if (val && !tags.some(t => t.toLowerCase() === val.toLowerCase())) {
+      tags.push(val);
+      saveTags(tags);
+      input.value = "";
+      render();
+      refreshTag(val);
+    }
+  });
+  document.getElementById("tagInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("addBtn").click();
+  });
+
+  render();
+  if (!claudeKey) document.getElementById("settingsPanel").classList.add("open");
+</script>
+</body>
+</html>
